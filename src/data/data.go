@@ -80,6 +80,8 @@ func (set *TSSet) Create() {
 	// Initialise the data set
 	set.init()
 
+	var e = make(chan ts.TSEvent)
+	go set.event(e)
 	/**
 	 * Create pipe(channel) through which the next time series event will
 	 * arrive here, be transformed and routed to the desired form
@@ -179,7 +181,7 @@ func (set *TSSet) event(x chan ts.TSEvent) {
 	 */
 	var e = make(chan ts.TSEvent)
 	// Start separate process(es) to construct time series event
-	go ts.EventSpreadInterval(set.Property.Seed, set.Property.Samples, e)
+	go ts.EventSpreadInterval(set.Property.Seed, set.Property.Samples, 410, e)
 
 	set.clear()
 	for event := range e {

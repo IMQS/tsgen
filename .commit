@@ -1,10 +1,15 @@
-#1.	Change package 'file' to 'out' since the possible destinations have been 
-	updated to include queues, http requests etc.
-#2. More elaborate comments in the packages.
-#3. Add events to time series generation and return as structure that 
-	contains relevant event information for exact point in series, this commit 
-	DOESN'T make use of the event YET.
-#4	Remove the verbose display of each data point generated.  Send to CSV
-	output if data has to be evaluated or visualised.
+#7	Generate event nodes
+#6	Implement quick sort utility since sort package does not support sorting 
+	[]UInt64
+
 #5	Add the basic moment measurement tool to the profiling package, use it to 
 	measure the time it takes to generate an output
+#4	Remove the verbose display of each data point generated.  Send to CSV
+	output if data has to be evaluated or visualised.
+#3. Add events to time series generation and return as structure that 
+	contains relevant event information for exact point in series, this commit 
+	DOESN'T make use of the event YET.	
+#2. More elaborate comments in the packages.
+#1.	Change package 'file' to 'out' since the possible destinations have been 
+	updated to include queues, http requests etc.
+
