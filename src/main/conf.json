@@ -6,7 +6,7 @@
 
 			"Start" : "2016-02-01T14:00:00+02:00",
 			"Seed": 100,
-			"Samples": 100000050,
+			"Samples": 1000050,
 			"Duration" : 1,
 			"Type" : "Sin",
 
@@ -19,12 +19,13 @@
 
 			"Start" : "2016-02-01T14:00:00+02:00",
 			"Seed": 100,
-			"Samples": 100000050,
+			"Samples": 1000050,
 			"Duration" : 1,
-			"Type" : "Sin",
+			"Type" : "Logic",
 
 			"Freq": 50,
-			"Amp" : 1
+			"Amp" : 1,
+			"Toggles" : 41
 		},
 		{
 			"Name": "battery_current",
@@ -32,7 +33,7 @@
 
 			"Start" : "2016-02-01T14:00:00+02:00",
 			"Seed": 100,
-			"Samples": 100000050,
+			"Samples": 1000050,
 			"Duration" : 1,
 			"Type" : "Sin",
 
@@ -45,7 +46,7 @@
 
 			"Start" : "2016-02-01T14:00:00+02:00",
 			"Seed": 100,
-			"Samples": 100000050,
+			"Samples": 1000050,
 			"Duration" : 1,
 			"Type" : "Sin",
 
@@ -58,7 +59,7 @@
 
 			"Start" : "2016-02-01T14:00:00+02:00",
 			"Seed": 100,
-			"Samples": 100000050,
+			"Samples": 1000050,
 			"Duration" : 1,
 			"Type" : "Sin",
 
@@ -71,7 +72,7 @@
 
 			"Start" : "2016-02-01T14:00:00+02:00",
 			"Seed": 100,
-			"Samples": 100000050,
+			"Samples": 1000050,
 			"Duration" : 1,
 			"Type" : "Sin",
 
@@ -84,7 +85,7 @@
 
 			"Start" : "2016-02-01T14:00:00+02:00",
 			"Seed": 100,
-			"Samples": 100000050,
+			"Samples": 1000050,
 			"Duration" : 1,
 			"Type" : "Sin",
 
@@ -97,7 +98,7 @@
 
 			"Start" : "2016-02-01T14:00:00+02:00",
 			"Seed": 100,
-			"Samples": 100000050,
+			"Samples": 1000050,
 			"Duration" : 1,
 			"Type" : "Sin",
 
@@ -110,7 +111,7 @@
 
 			"Start" : "2016-02-01T14:00:00+02:00",
 			"Seed": 100,
-			"Samples": 100000050,
+			"Samples": 1000050,
 			"Duration" : 1,
 			"Type" : "Sin",
 
@@ -123,7 +124,7 @@
 
 			"Start" : "2016-02-01T14:00:00+02:00",
 			"Seed": 100,
-			"Samples": 100000050,
+			"Samples": 1000050,
 			"Duration" : 1,
 			"Type" : "Sin",
 
@@ -136,7 +137,7 @@
 
 			"Start" : "2016-02-01T14:00:00+02:00",
 			"Seed": 100,
-			"Samples": 100000050,
+			"Samples": 1000050,
 			"Duration" : 1,
 			"Type" : "Sin",
 
@@ -149,7 +150,7 @@
 
 			"Start" : "2016-02-01T14:00:00+02:00",
 			"Seed": 100,
-			"Samples": 100000050,
+			"Samples": 1000050,
 			"Duration" : 1,
 			"Type" : "Sin",
 
@@ -162,7 +163,7 @@
 
 			"Start" : "2016-02-01T14:00:00+02:00",
 			"Seed": 100,
-			"Samples": 100000050,
+			"Samples": 1000050,
 			"Duration" : 1,
 			"Type" : "Sin",
 
@@ -175,7 +176,7 @@
 
 			"Start" : "2016-02-01T14:00:00+02:00",
 			"Seed": 100,
-			"Samples": 100000050,
+			"Samples": 10000050,
 			"Duration" : 1,
 			"Type" : "Sin",
 

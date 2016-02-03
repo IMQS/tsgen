@@ -28,7 +28,7 @@ func main() {
 		 */
 		sets[idx].Property = v
 		sets[idx].Property.Verbose = false
-		sets[idx].File.Verbose = false
+		sets[idx].Dest.Verbose = false
 
 		// Create a channel for each data set to indicate when it is done
 		sets[idx].Done = make(chan bool)

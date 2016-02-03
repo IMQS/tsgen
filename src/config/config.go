@@ -28,7 +28,7 @@ type TSProperties struct {
 	Freq float64 // Hz (Hertz) if applicable
 	Amp  float64 // unitless
 	// Logic
-	Toggle int64 // number of toggles in logic
+	Toggles int64 // number of toggles in logic
 
 	// Control
 	Verbose bool // enable or disable verbose display during create
