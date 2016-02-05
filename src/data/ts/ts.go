@@ -1,10 +1,9 @@
 package ts
 
 import (
-	"fmt"
+	"config"
 	"math"
 	"math/rand"
-
 	"util"
 )
 
@@ -26,75 +25,49 @@ type TSEvent struct {
 	Type EEventType
 }
 
-func FixedInterval(seed int64, n uint64, x chan float64) {
-	// Generate equispaced timebase
-	interval := float64(1.00) / float64(n)
-	// To force type (type mismatch in for if assumed)
-	var idx uint64
-	for idx = 0; idx < n; idx++ {
-		val := float64((float64(idx) * interval))
-		// Send up the pipe
-		x <- val
-	}
-	close(x)
-}
-
-func SpreadInterval(seed int64, n uint64, x chan float64) {
+func EventSpreadInterval(config *config.TSProperties, e chan TSEvent) {
 	/**
 	 * Generate equispaced timebase framework that defines
 	 * the next sample time as a random interval within
 	 * the allowed fixed interval, creating a spread interval
 	 * with a jitter of +-interval
 	 */
-	interval := float64(1.00) / float64(n)
-	src := rand.NewSource(seed)
-	// To force type (type mismatch in for if assumed)
-	var idx uint64
-	for idx = 0; idx < n; idx++ {
-		reach := float64(src.Int63()) / float64(math.MaxInt64)
-		val := float64((float64(idx) * interval) + (interval * reach))
-		// Send up the pipe
-		x <- val
-	}
-	close(x)
-}
-
-func EventSpreadInterval(seed int64, n uint64, ntog uint64, e chan TSEvent) {
-	/**
-	 * Generate equispaced timebase framework that defines
-	 * the next sample time as a random interval within
-	 * the allowed fixed interval, creating a spread interval
-	 * with a jitter of +-interval
-	 */
-	interval := float64(1.00) / float64(n)
-	baseSpread := rand.NewSource(seed)
-	eventSpread := rand.NewSource(math.MaxInt64 - seed)
+	interval := float64(1.00) / float64(config.Samples)
+	baseSpread := rand.NewSource(config.Seed)
+	nodeSpread := rand.NewSource(math.MaxInt64 - config.Seed)
 	// To force type (type mismatch in for if assumed)
 	var idx uint64
 	var idxEvent uint64
-	var onEvents = make([]uint64, 0)
-	for idx = 0; idx < ntog; idx++ {
-		onEvents = append(onEvents, uint64((float64(eventSpread.Int63())/float64(math.MaxInt64))*float64(n)))
+	var Events = make([]uint64, 0)
+	for idx = 0; idx < config.Toggles; idx++ {
+		Events = append(Events, uint64((float64(nodeSpread.Int63())/float64(math.MaxInt64))*float64(config.Samples)))
 	}
+
 	idxEvent = 0
-
-	//Sort the events so that they retain chronologic order
-	onEvents = util.QSortU64(onEvents)
-	fmt.Println(onEvents)
-
-	for idx = 0; idx < n; idx++ {
+	// Call on utility function to sort Events that they can be used in chronologic order
+	Events = util.QSortU64(Events)
+	for idx = 0; idx < config.Samples; idx++ {
 		reach := float64(baseSpread.Int63()) / float64(math.MaxInt64)
 		Tn := float64((float64(idx) * interval) + (interval * reach))
-		// Create event at this point in the time series
-		var event TSEvent
+
+		// Create event at this point in the time series, with default values
+		event := TSEvent{Tn: 0.00, Type: None}
 		event.Tn = Tn
-		// Define event specific detail here
-		if onEvents[idxEvent] == idx {
-			event.Type = Toggle
-			idxEvent++
+
+		if idxEvent < uint64(len(Events)) {
+			if len(Events) <= 0 {
+				// No events need be linked to any point in time
+			} else {
+				// Define event specific detail here
+				if Events[idxEvent] == idx {
+					event.Type = Toggle
+					idxEvent++
+				}
+			}
 		}
 		// Send event up the pipe
 		e <- event
 	}
+
 	close(e)
 }

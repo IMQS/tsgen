@@ -1,187 +1,19 @@
 {"Property" : 
 	[
 		{
-			"Name": "battery_voltage",
-			"Format" : "CSV",
+			"Name": "batt_voltage",
+			"Format" : "HTTP",
+			"Host" : "127.0.0.1",
+			"Port" : 8080,
 
 			"Start" : "2016-02-01T14:00:00+02:00",
-			"Seed": 100,
-			"Samples": 1000050,
+			"Seed": 3369,
+			"Samples": 1000,
 			"Duration" : 1,
 			"Type" : "Sin",
 
 			"Freq": 50,
-			"Amp" : 48
-		},
-		{
-			"Name": "alarm_battery_voltage",
-			"Format" : "CSV",
-
-			"Start" : "2016-02-01T14:00:00+02:00",
-			"Seed": 100,
-			"Samples": 1000050,
-			"Duration" : 1,
-			"Type" : "Logic",
-
-			"Freq": 50,
-			"Amp" : 1,
-			"Toggles" : 41
-		},
-		{
-			"Name": "battery_current",
-			"Format" : "CSV",
-
-			"Start" : "2016-02-01T14:00:00+02:00",
-			"Seed": 100,
-			"Samples": 1000050,
-			"Duration" : 1,
-			"Type" : "Sin",
-
-			"Freq": 50,
-			"Amp" : 20
-		},
-		{
-			"Name": "alarm_battery_current",
-			"Format" : "CSV",
-
-			"Start" : "2016-02-01T14:00:00+02:00",
-			"Seed": 100,
-			"Samples": 1000050,
-			"Duration" : 1,
-			"Type" : "Sin",
-
-			"Freq": 50,
-			"Amp" : 1
-		},		
-		{
-			"Name": "battery_temperature",
-			"Format" : "CSV",
-
-			"Start" : "2016-02-01T14:00:00+02:00",
-			"Seed": 100,
-			"Samples": 1000050,
-			"Duration" : 1,
-			"Type" : "Sin",
-
-			"Freq": 50,
-			"Amp" : 48
-		},		
-		{
-			"Name": "alarm_battery_temperate",
-			"Format" : "CSV",
-
-			"Start" : "2016-02-01T14:00:00+02:00",
-			"Seed": 100,
-			"Samples": 1000050,
-			"Duration" : 1,
-			"Type" : "Sin",
-
-			"Freq": 50,
-			"Amp" : 1
-		},		
-		{
-			"Name": "mains_AC_voltage",
-			"Format" : "CSV",
-
-			"Start" : "2016-02-01T14:00:00+02:00",
-			"Seed": 100,
-			"Samples": 1000050,
-			"Duration" : 1,
-			"Type" : "Sin",
-
-			"Freq": 50,
-			"Amp" : 48
-		},	
-		{
-			"Name": "alarms_mains_AC_voltage",
-			"Format" : "CSV",
-
-			"Start" : "2016-02-01T14:00:00+02:00",
-			"Seed": 100,
-			"Samples": 1000050,
-			"Duration" : 1,
-			"Type" : "Sin",
-
-			"Freq": 50,
-			"Amp" : 48
-		},		
-		{
-			"Name": "mains_AC_current",
-			"Format" : "CSV",
-
-			"Start" : "2016-02-01T14:00:00+02:00",
-			"Seed": 100,
-			"Samples": 1000050,
-			"Duration" : 1,
-			"Type" : "Sin",
-
-			"Freq": 50,
-			"Amp" : 48
-		},	
-		{
-			"Name": "alarm_mains_AC_current",
-			"Format" : "CSV",
-
-			"Start" : "2016-02-01T14:00:00+02:00",
-			"Seed": 100,
-			"Samples": 1000050,
-			"Duration" : 1,
-			"Type" : "Sin",
-
-			"Freq": 50,
-			"Amp" : 48
-		},	
-		{
-			"Name": "fuel_level",
-			"Format" : "CSV",
-
-			"Start" : "2016-02-01T14:00:00+02:00",
-			"Seed": 100,
-			"Samples": 1000050,
-			"Duration" : 1,
-			"Type" : "Sin",
-
-			"Freq": 50,
-			"Amp" : 48
-		},	
-		{
-			"Name": "alarm_fuel_level",
-			"Format" : "CSV",
-
-			"Start" : "2016-02-01T14:00:00+02:00",
-			"Seed": 100,
-			"Samples": 1000050,
-			"Duration" : 1,
-			"Type" : "Sin",
-
-			"Freq": 50,
-			"Amp" : 48
-		},	
-		{
-			"Name": "fuel_consumption",
-			"Format" : "CSV",
-
-			"Start" : "2016-02-01T14:00:00+02:00",
-			"Seed": 100,
-			"Samples": 1000050,
-			"Duration" : 1,
-			"Type" : "Sin",
-
-			"Freq": 50,
-			"Amp" : 48
-		},	
-		{
-			"Name": "alarm_fuel_consumption",
-			"Format" : "CSV",
-
-			"Start" : "2016-02-01T14:00:00+02:00",
-			"Seed": 100,
-			"Samples": 10000050,
-			"Duration" : 1,
-			"Type" : "Sin",
-
-			"Freq": 50,
-			"Amp" : 48
-		}		
+			"Amp" : 70
+		}
 	]
 }

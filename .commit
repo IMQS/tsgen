@@ -1,3 +1,12 @@
+#13 Implement the HTTP POST support for single as well as batch HTTP requests
+#12 Implement 'High' and 'Low' scaling factors for the Logic data type to
+	scale the HIGH and LOW logical signal values
+#11 Use the events and state to generate Logic signals that 
+	change at random intervals throughout the time series distribution
+	but only the amount of times specified
+#10 Implement configuration properties to allow for the Logic data type
+#9 	Implement a toggle switcher that flips between STATEs on each toggle event
+#8 	Register toggle events on predetermined amount of samples
 #7	Generate event nodes
 #6	Implement quick sort utility since sort package does not support sorting 
 	[]UInt64
@@ -12,4 +21,238 @@
 #2. More elaborate comments in the packages.
 #1.	Change package 'file' to 'out' since the possible destinations have been 
 	updated to include queues, http requests etc.
+
+
+	var json bytes.Buffer
+
+	n, err := json.Write([]byte(`[{`))
+	n, err := json.Write([]byte(`[{`))
+
+	json.Write([]byte(`name`))
+	json.Write([]byte(`:`))
+
+	var b byte
+	for _, b = range []byte(`[{`) {
+		json = append(json, b)
+	}
+
+	// Name
+	json = strconv.AppendQuote(json, `name`)
+	util.AppendTo(&json, `:`)
+	json = strconv.AppendQuote(json, name)
+	util.AppendTo(&json, `,`)
+
+	// Timestamp
+	json = strconv.AppendQuote(json, `timestamp`)
+	for _, b = range []byte(`:`) {
+		json = append(json, b)
+	}
+	for _, b = range []byte(strconv.FormatInt(stamp, 10)) {
+		json = append(json, b)
+	}
+	for _, b = range []byte(`,`) {
+		json = append(json, b)
+	}
+
+	// Value
+	json = strconv.AppendQuote(json, `value`)
+	for _, b = range []byte(`:`) {
+		json = append(json, b)
+	}
+	for _, b = range []byte(strconv.FormatFloat(value, 'f', -1, 64)) {
+		json = append(json, b)
+	}
+
+	for _, b = range []byte(`}]`) {
+		json = append(json, b)
+	}
+
+
+		{
+			"Name": "battery_voltage",
+			"Format" : "CSV",
+
+			"Start" : "2016-02-01T14:00:00+02:00",
+			"Seed": 574125,
+			"Samples": 1000050,
+			"Duration" : 1,
+			"Type" : "Sin",
+
+			"Freq": 50,
+			"Amp" : 48
+		},
+		{
+			"Name": "alarm_battery_voltage",
+			"Format" : "CSV",
+
+			"Start" : "2016-02-01T14:00:00+02:00",
+			"Seed": 54968718,
+			"Samples": 1000050,
+			"Duration" : 1,
+			"Type" : "Logic",
+
+			"Toggles" : 27,
+			"State" : "LOW",
+			"High" : 5.00,
+			"Low" : 0.00
+		},
+		{
+			"Name": "battery_current",
+			"Format" : "CSV",
+
+			"Start" : "2016-02-01T14:00:00+02:00",
+			"Seed": 54,
+			"Samples": 1000050,
+			"Duration" : 1,
+			"Type" : "Cos",
+
+			"Freq": 50,
+			"Amp" : 20
+		},
+		{
+			"Name": "alarm_battery_current",
+			"Format" : "CSV",
+
+			"Start" : "2016-02-01T14:00:00+02:00",
+			"Seed": 1546,
+			"Samples": 1000050,
+			"Duration" : 1,
+			"Type" : "Logic",
+
+			"Toggles" : 12,
+			"State" : "HIGH",
+			"High" : 1.00,
+			"Low" : 0.00
+		},	
+		
+
+
+			{
+			"Name": "alarm_battery_temperate",
+			"Format" : "CSV",
+
+			"Start" : "2016-02-01T14:00:00+02:00",
+			"Seed": 77848,
+			"Samples": 1000050,
+			"Duration" : 1,
+			"Type" : "Logic",
+
+			"Toggles" : 327,
+			"State" : "LOW",
+			"High" : 5.00,
+			"Low" : 0.00
+		},		
+		{
+			"Name": "mains_AC_voltage",
+			"Format" : "CSV",
+
+			"Start" : "2016-02-01T14:00:00+02:00",
+			"Seed": 10234,
+			"Samples": 1000050,
+			"Duration" : 1,
+			"Type" : "Sin",
+
+			"Freq": 50,
+			"Amp" : 230
+		},	
+		{
+			"Name": "alarms_mains_AC_voltage",
+			"Format" : "CSV",
+
+			"Start" : "2016-02-01T14:00:00+02:00",
+			"Seed": 65548,
+			"Samples": 1000050,
+			"Duration" : 1,
+			"Type" : "Logic",
+
+			"Toggles" : 678,
+			"State" : "LOW",
+			"High" : 5.00,
+			"Low" : 0.00
+		},		
+		{
+			"Name": "mains_AC_current",
+			"Format" : "CSV",
+
+			"Start" : "2016-02-01T14:00:00+02:00",
+			"Seed": 3,
+			"Samples": 1000050,
+			"Duration" : 1,
+			"Type" : "Sin",
+
+			"Freq": 50,
+			"Amp" : 40
+		},	
+		{
+			"Name": "alarm_mains_AC_current",
+			"Format" : "CSV",
+
+			"Start" : "2016-02-01T14:00:00+02:00",
+			"Seed": 7484,
+			"Samples": 1000050,
+			"Duration" : 1,
+			"Type" : "Logic",
+
+			"Toggles" : 114,
+			"State" : "LOW",
+			"High" : 5.00,
+			"Low" : 0.00
+		},	
+		{
+			"Name": "fuel_level",
+			"Format" : "CSV",
+
+			"Start" : "2016-02-01T14:00:00+02:00",
+			"Seed": 55154,
+			"Samples": 1000050,
+			"Duration" : 1,
+			"Type" : "Setpoint",
+
+			"Freq": 50,
+			"Amp" : 1200
+		},	
+		{
+			"Name": "alarm_fuel_level",
+			"Format" : "CSV",
+
+			"Start" : "2016-02-01T14:00:00+02:00",
+			"Seed": 995,
+			"Samples": 1000050,
+			"Duration" : 1,
+			"Type" : "Logic",
+
+			"Toggles" : 1214,
+			"State" : "LOW",
+			"High" : 5.00,
+			"Low" : 0.00
+		},	
+		{
+			"Name": "fuel_consumption",
+			"Format" : "CSV",
+
+			"Start" : "2016-02-01T14:00:00+02:00",
+			"Seed": 69,
+			"Samples": 1000050,
+			"Duration" : 1,
+			"Type" : "Sin",
+
+			"Freq": 50,
+			"Amp" : 12
+		},	
+		{
+			"Name": "alarm_fuel_consumption",
+			"Format" : "CSV",
+
+			"Start" : "2016-02-01T14:00:00+02:00",
+			"Seed": 1874695,
+			"Samples": 1000050,
+			"Duration" : 1,
+			"Type" : "Logic",
+
+			"Toggles" : 87,
+			"State" : "LOW",
+			"High" : 5.00,
+			"Low" : 0.00
+		}	
+
 

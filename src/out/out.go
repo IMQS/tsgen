@@ -4,6 +4,7 @@ import (
 	"encoding/csv"
 	"fmt"
 	"os"
+	"rest"
 	"strconv"
 )
 
@@ -11,7 +12,8 @@ import (
 type EFormatType string
 
 const (
-	CSV EFormatType = "CSV"
+	CSV  EFormatType = "CSV"
+	HTTP EFormatType = "HTTP"
 )
 
 func (format *EFormatType) String() string {
@@ -22,15 +24,60 @@ func (format *EFormatType) String() string {
 type TSDestination struct {
 	Type EFormatType
 	Path string
+	Name string
+	Host string
+	Port int64
+	REST rest.TSRest
 
 	Page chan bool
 	Done chan bool
 
 	Verbose bool // enable or disable verbose display during create
 
-	TimeStamp []int64
-	Value     []float64
-	Content   []byte
+	Hdr       []string  // Coloumn headers for CSV output type
+	TimeStamp []int64   // Local buffer for time stamp storage
+	Value     []float64 // Local buffer for Value storage
+	Content   []byte    // Formatted content for output
+}
+
+func (dst *TSDestination) Init() {
+	// Standard definition for time series coloumn headers
+	switch dst.Type {
+	case CSV:
+		dst.Hdr = make([]string, 0)
+		s := "Time"
+		var b byte
+		for _, b = range []byte(s) {
+			dst.Content = append(dst.Content, b)
+		}
+		dst.Content = append(dst.Content, 44) // comma
+		//strconv.AppendQuoteToASCII(dst.Content, "Value")
+		for _, b = range []byte(`Value`) {
+			dst.Content = append(dst.Content, b)
+		}
+		dst.Content = append(dst.Content, 13) //CR
+		dst.Content = append(dst.Content, 10) //LF
+
+		//  Always Create the file here
+		disk, err := os.Create(dst.Path)
+		if err != nil {
+
+		}
+		// Close the file so that it may be opened in a different mode
+		disk.Close()
+	default:
+	}
+
+	fmt.Println(dst.Hdr)
+
+}
+
+func (dst *TSDestination) Post() {
+	if dst.Verbose {
+		fmt.Println("dst.Post")
+	}
+	dst.Format()
+	dst.Out()
 }
 
 func (dst *TSDestination) Dump() {
@@ -38,16 +85,7 @@ func (dst *TSDestination) Dump() {
 		fmt.Println("dst.Dump")
 	}
 	dst.Format()
-	dst.Write()
-}
-
-func (dst *TSDestination) Init() {
-	//  Always Create the file here
-	disk, err := os.Create(dst.Path)
-	if err != nil {
-		fmt.Println("Problem with creating file")
-	}
-	defer disk.Close()
+	dst.Out()
 }
 
 func (dst *TSDestination) Format() {
@@ -72,16 +110,20 @@ func (dst *TSDestination) Format() {
 				dst.Content = append(dst.Content, 13) //CR
 				dst.Content = append(dst.Content, 10) //LF
 			}
+		case HTTP:
+			/**
+			 * REST does not utilise the Content array, it stores its
+			 * commands internally
+			 * Structured to POST for each value pair produced by the value
+			 * pump
+			 */
+			dst.REST.Batch(dst.Name, &dst.TimeStamp, &dst.Value)
 		default:
 		}
 	}
 }
 
-func (dst *TSDestination) Write() {
-	if dst.Verbose {
-		fmt.Println("dst.Write")
-	}
-
+func (dst *TSDestination) Open() *os.File {
 	// Test whether file already exist
 	if _, err := os.Stat(dst.Path); os.IsNotExist(err) {
 		_, err = os.Create(dst.Path)
@@ -92,13 +134,31 @@ func (dst *TSDestination) Write() {
 	if err != nil {
 		fmt.Println("Problem with creating file")
 	}
-	defer disk.Close()
+	return disk
+}
+
+func (dst *TSDestination) Close(disk *os.File) {
+	disk.Close()
+}
+
+func (dst *TSDestination) Out() {
+	if dst.Verbose {
+		fmt.Println("dst.Write")
+	}
 
 	switch dst.Type {
 	case CSV:
+		disk := dst.Open()
+		defer dst.Close(disk)
+
 		// Data already formatted to content, write to disk
 		disk.Write(dst.Content)
+	case HTTP:
+		// Data already formatted to content, use REST API
+		dst.REST.Add(dst.Host, dst.Port)
 	default:
+		disk := dst.Open()
+		defer dst.Close(disk)
 		/**
 		 * Default CSV format writer for data set implemented as
 		 * first order solution but generic enough to use as

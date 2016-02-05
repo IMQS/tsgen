@@ -33,7 +33,6 @@ func (m *TSMoment) Lap() {
 	m.Laps = append(m.Laps, time.Now().Sub((m.Tlap)))
 	// There might be some loss of accuracy right here
 	m.Tlap = time.Now()
-
 }
 
 func (m *TSMoment) Elapsed() int64 {

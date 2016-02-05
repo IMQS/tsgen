@@ -4,11 +4,15 @@ import (
 	"config"
 	"data"
 	"fmt"
+	"profile"
 )
 
 var voltage data.TSSet
 
 func main() {
+
+	var ex profile.TSProfile
+	ex.Execute.Start(0)
 	/**
 	 * Get the configuration information and set the properties
 	 * of each data set
@@ -26,6 +30,7 @@ func main() {
 		 * Set each data set's properties from the configuration
 		 * information pulled from the JSON configuration file
 		 */
+		sets[idx].Id = int64(idx)
 		sets[idx].Property = v
 		sets[idx].Property.Verbose = false
 		sets[idx].Dest.Verbose = false
@@ -44,5 +49,7 @@ func main() {
 	for idx := 0; idx < len(configs.Property); idx++ {
 		<-sets[idx].Done
 	}
+
 	fmt.Println("Done")
+	fmt.Println(float64(ex.Execute.Elapsed())/1e9, "s")
 }

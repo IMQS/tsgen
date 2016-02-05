@@ -11,15 +11,26 @@ import (
 
 // Defines the constants for the different data types supported
 const (
-	Sin   string = "Sin"
-	Cos   string = "Cos"
-	Logic string = "Logic"
-	Clock string = "Clock"
+	Sin      string = "Sin"
+	Cos      string = "Cos"
+	Logic    string = "Logic"
+	Clock    string = "Clock"
+	Setpoint string = "Setpoint"
 )
 
 // Package constant
 const (
-	pageCSV int64 = 131072 //page size at which data gets dumped to file
+	pageCSV  int64 = 131072 //page size at which data gets dumped to file
+	pageHTTP int64 = 100    //page size at which data gets batched for HTTP REST API
+)
+
+type EState string
+
+const (
+	UNDEFINED EState = "UNDEFINED"
+	HIGH      EState = "HIGH"
+	LOW       EState = "LOW"
+	TRI       EState = "TRI"
 )
 
 /**
@@ -28,14 +39,16 @@ const (
  * of the generated series at a time
  */
 type TSSet struct {
+	Id       int64
 	Property config.TSProperties
 	Dest     out.TSDestination
 
-	idx       int64
-	idxP      int64
-	Event     []ts.TSEvent // Unix nanoseconds
-	TimeStamp []int64      // Unix nanoseconds
-	Value     []float64    // normalised before transform
+	idx  int64
+	idxP int64
+
+	TimeStamp []int64   // Unix nanoseconds
+	Value     []float64 // normalised before transform
+	State     EState
 
 	Done     chan bool
 	Pause    chan bool
@@ -56,10 +69,16 @@ func (set *TSSet) init() {
 	// Start moment measurement
 	set.Profile.Execute.Start(0)
 
+	set.State = EState(set.Property.State)
+
 	set.Dest.Type = out.EFormatType(set.Property.Format)
 	set.Dest.Path = set.Property.Name + "." + set.Property.Format
+	set.Dest.Name = set.Property.Name
+	set.Dest.Host = set.Property.Host
+	set.Dest.Port = set.Property.Port
 
 	// Initialise the destination
+
 	set.Dest.Init()
 	if set.Property.Verbose {
 		fmt.Println(set.Dest.Type)
@@ -80,28 +99,28 @@ func (set *TSSet) Create() {
 	// Initialise the data set
 	set.init()
 
-	var e = make(chan ts.TSEvent)
-	go set.event(e)
 	/**
 	 * Create pipe(channel) through which the next time series event will
 	 * arrive here, be transformed and routed to the desired form
 	 * of output.
 	 */
-	var x = make(chan float64)
-	// Start separate process(es) that generates the exact point in time
-	go set.time(x)
+	set.idx = 0
+	var e = make(chan ts.TSEvent)
+	go set.event(e)
 	/**
 	 * Implement data transform on normalised time base series.
 	 * In time transform on values as they are made available through
 	 * the piping system that drills down to time series generation.
 	 */
-	for v := range x {
-		set.stamp(v)
+	for v := range e {
+		set.stamp(v.Tn)
 		switch set.Property.Type {
 		case Sin:
-			set.sin(v)
+			set.sin(v.Tn)
 		case Cos:
-			set.cos(v)
+			set.cos(v.Tn)
+		case Logic:
+			set.logic(&v)
 		default:
 		}
 
@@ -112,7 +131,13 @@ func (set *TSSet) Create() {
 		switch set.Dest.Type {
 		case out.CSV:
 			if set.idx%pageCSV == 0 {
-				set.Store()
+				set.Process()
+			}
+		case out.HTTP:
+			if set.idx%pageHTTP == 0 {
+				set.Process()
+				fmt.Printf("%d:%d|", set.Id, set.idx)
+
 			}
 		default:
 		}
@@ -123,7 +148,9 @@ func (set *TSSet) Create() {
 	 * that was not handled on a modulus event on page* size
 	 * that may still reside within the buffer to disk
 	 */
-	set.Store()
+	if set.Dest.Type == out.CSV {
+		set.Process()
+	}
 
 	// Stop moment measurement
 	set.Profile.Execute.Stop()
@@ -135,7 +162,7 @@ func (set *TSSet) Create() {
 	set.Done <- true
 }
 
-func (set *TSSet) Store() {
+func (set *TSSet) Process() {
 	if set.Property.Verbose {
 		fmt.Println("data.Store")
 	}
@@ -157,23 +184,6 @@ func (set *TSSet) Store() {
 
 }
 
-func (set *TSSet) time(x chan float64) {
-	/**
-	 * Create pipe(channel) through which the next time series value will
-	 * be pumped to the surface
-	 */
-	var t = make(chan float64)
-	// Start separate process(es) to construct time series value
-	go ts.SpreadInterval(set.Property.Seed, set.Property.Samples, t)
-
-	set.TimeStamp = make([]int64, 0)
-	set.Value = make([]float64, 0)
-	for val := range t {
-		x <- val
-	}
-	close(x)
-}
-
 func (set *TSSet) event(x chan ts.TSEvent) {
 	/**
 	 * Create pipe(channel) through which the next time series event will
@@ -181,9 +191,11 @@ func (set *TSSet) event(x chan ts.TSEvent) {
 	 */
 	var e = make(chan ts.TSEvent)
 	// Start separate process(es) to construct time series event
-	go ts.EventSpreadInterval(set.Property.Seed, set.Property.Samples, 410, e)
+	fmt.Println(set.Property.Toggles)
+	go ts.EventSpreadInterval(&set.Property, e)
 
-	set.clear()
+	set.TimeStamp = make([]int64, 0)
+	set.Value = make([]float64, 0)
 	for event := range e {
 		// Send event up the pipe
 		x <- event
@@ -194,7 +206,6 @@ func (set *TSSet) event(x chan ts.TSEvent) {
 func (set *TSSet) clear() {
 	set.TimeStamp = make([]int64, 0)
 	set.Value = make([]float64, 0)
-	set.Event = make([]ts.TSEvent, 0)
 }
 
 func (set *TSSet) stamp(v float64) {
@@ -208,4 +219,36 @@ func (set *TSSet) sin(v float64) {
 
 func (set *TSSet) cos(v float64) {
 	set.Value = append(set.Value, set.Property.Amp*math.Cos((2*math.Pi)*(v*set.Property.Duration)*(set.Property.Freq)))
+}
+
+func (set *TSSet) logic(event *ts.TSEvent) {
+	if event.Type == ts.Toggle {
+		switch set.State {
+		case UNDEFINED:
+			set.State = LOW
+		case HIGH:
+			set.State = LOW
+		case LOW:
+			set.State = HIGH
+		case TRI:
+			set.State = TRI
+			// Need to find a way to represent this in data
+			set.Value = append(set.Value, 0)
+		default:
+			set.State = LOW
+		}
+	}
+	switch set.State {
+	case UNDEFINED:
+		set.Value = append(set.Value, 0)
+	case HIGH:
+		set.Value = append(set.Value, set.Property.High)
+	case LOW:
+		set.Value = append(set.Value, set.Property.Low)
+	case TRI:
+		// Need to find a way to represent this in data
+		set.Value = append(set.Value, 0)
+	default:
+		set.Value = append(set.Value, set.Property.Low)
+	}
 }

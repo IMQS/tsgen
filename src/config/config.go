@@ -15,6 +15,8 @@ type TSProperties struct {
 	// Set/File
 	Name   string // Identifier string for time series data
 	Format string // Output file format
+	Host   string // Host name in IP address format
+	Port   int64  // Port number
 
 	// Content
 	Start    time.Time // specified in year, month etc
@@ -28,7 +30,13 @@ type TSProperties struct {
 	Freq float64 // Hz (Hertz) if applicable
 	Amp  float64 // unitless
 	// Logic
-	Toggles int64 // number of toggles in logic
+	Toggles uint64  // Number of toggles in logic
+	State   string  // Start state for logic
+	High    float64 // Factor to scale the logic HIGH signal level
+	Low     float64 // Factor to scale the logic LOW signal level
+
+	// Clock
+	Duty float64 // Duty cycle of the clock signal
 
 	// Control
 	Verbose bool // enable or disable verbose display during create
