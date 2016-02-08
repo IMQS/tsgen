@@ -39,8 +39,17 @@ func EventSpreadInterval(config *config.TSProperties, e chan TSEvent) {
 	var idx uint64
 	var idxEvent uint64
 	var Events = make([]uint64, 0)
-	for idx = 0; idx < config.Toggles; idx++ {
-		Events = append(Events, uint64((float64(nodeSpread.Int63())/float64(math.MaxInt64))*float64(config.Samples)))
+
+	if len(config.Toggles) <= 0 {
+		// Index out of range
+	} else {
+		if len(config.Toggles) <= 1 {
+			for idx = 0; idx < config.Toggles[0]; idx++ {
+				Events = append(Events, uint64((float64(nodeSpread.Int63())/float64(math.MaxInt64))*float64(config.Samples)))
+			}
+		} else {
+			// Determine whether it would ever be necessary using multiple toggles
+		}
 	}
 
 	idxEvent = 0

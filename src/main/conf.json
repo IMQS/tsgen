@@ -2,18 +2,48 @@
 	[
 		{
 			"Name": "batt_voltage",
-			"Format" : "HTTP",
-			"Host" : "127.0.0.1",
-			"Port" : 8080,
+			"Format" : "CSV",
 
 			"Start" : "2016-02-01T14:00:00+02:00",
 			"Seed": 3369,
-			"Samples": 1000,
+			"Samples": 100000,
 			"Duration" : 1,
-			"Type" : "Sin",
+			"Bias" : [12, 0, 0, 0, 0],
+			"Type" : ["Sin", "Sin", "Cos","Sin", "Cos"],
 
-			"Freq": 50,
-			"Amp" : 70
-		}
+			"Freq": [50,2500, 5000, 15000, 20000, 50000],
+			"Amp" : [0.3, 0.1, 0.1, 0.1, 0.05, 0.05]
+		},
+		{
+			"Name": "batt_current",
+			"Format" : "CSV",
+
+			"Start" : "2016-02-01T14:00:00+02:00",
+			"Seed": 3369,
+			"Samples": 100000,
+			"Duration" : 1,
+			"Bias" : [12],
+			"Type" : ["Cos"],
+
+			"Freq": [2],
+			"Amp" : [0.3]
+		},
+		{
+			"Name": "alarm_batt_current",
+			"Format" : "CSV",
+
+			"Start" : "2016-02-01T14:00:00+02:00",
+			"Seed": 3369,
+			"Samples": 100000,
+			"Duration" : 1,
+			"Bias" : [12],
+			"Type" : ["Logic"],
+
+			"Toggles" : [148],
+			"State"	: "LOW",
+			"High" : 5,
+			"Low" : 0
+
+		}		
 	]
 }

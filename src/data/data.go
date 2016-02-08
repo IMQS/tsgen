@@ -16,6 +16,7 @@ const (
 	Logic    string = "Logic"
 	Clock    string = "Clock"
 	Setpoint string = "Setpoint"
+	Complex  string = "Complex"
 )
 
 // Package constant
@@ -68,7 +69,6 @@ func degrees(rad float64) float64 {
 func (set *TSSet) init() {
 	// Start moment measurement
 	set.Profile.Execute.Start(0)
-
 	set.State = EState(set.Property.State)
 
 	set.Dest.Type = out.EFormatType(set.Property.Format)
@@ -114,19 +114,34 @@ func (set *TSSet) Create() {
 	 */
 	for v := range e {
 		set.stamp(v.Tn)
-		switch set.Property.Type {
-		case Sin:
-			set.sin(v.Tn)
-		case Cos:
-			set.cos(v.Tn)
-		case Logic:
-			set.logic(&v)
-		default:
+		if len(set.Property.Type) <= 0 {
+
+		} else {
+			if len(set.Property.Type) <= 1 {
+				switch set.Property.Type[0] {
+				case Sin:
+					set.sin(0, v.Tn)
+				case Cos:
+					set.cos(0, v.Tn)
+				case Logic:
+					set.logic(&v)
+				default:
+				}
+			} else {
+				/**
+				 * Use multiple definitions for type parameter to
+				 * build a complex signal
+				 */
+				set.compound(&v)
+			}
 		}
 
 		/**
 		 * Select (and implement) the output format configured for the
 		 * time series.
+		 * NB: 	Take note that set type and destination type are not the same
+		 *		Set Type is the type of data (transformation applied) in the set
+		 *     	Destination type is the format of the output
 		 */
 		switch set.Dest.Type {
 		case out.CSV:
@@ -213,12 +228,24 @@ func (set *TSSet) stamp(v float64) {
 	set.TimeStamp = append(set.TimeStamp, set.Property.Start.UnixNano()+nano)
 }
 
-func (set *TSSet) sin(v float64) {
-	set.Value = append(set.Value, set.Property.Amp*math.Sin((2*math.Pi)*(v*set.Property.Duration)*(set.Property.Freq)))
+func (set *TSSet) sin(idx int, v float64) float64 {
+	var val float64 = set.Property.Amp[idx] * math.Sin((2*math.Pi)*(v*set.Property.Duration)*(set.Property.Freq[idx]))
+	if set.Property.Compound {
+		// No specific action as of yet
+	} else {
+		set.Value = append(set.Value, set.Property.Bias[idx]+val)
+	}
+	return val
 }
 
-func (set *TSSet) cos(v float64) {
-	set.Value = append(set.Value, set.Property.Amp*math.Cos((2*math.Pi)*(v*set.Property.Duration)*(set.Property.Freq)))
+func (set *TSSet) cos(idx int, v float64) float64 {
+	var val float64 = set.Property.Amp[idx] * math.Cos((2*math.Pi)*(v*set.Property.Duration)*(set.Property.Freq[idx]))
+	if set.Property.Compound {
+		// No specific action as of yet
+	} else {
+		set.Value = append(set.Value, set.Property.Bias[idx]+val)
+	}
+	return val
 }
 
 func (set *TSSet) logic(event *ts.TSEvent) {
@@ -251,4 +278,18 @@ func (set *TSSet) logic(event *ts.TSEvent) {
 	default:
 		set.Value = append(set.Value, set.Property.Low)
 	}
+}
+
+func (set *TSSet) compound(event *ts.TSEvent) {
+	var val float64 = float64(0)
+	for i, v := range set.Property.Type {
+		switch v {
+		case Sin:
+			val += set.Property.Bias[i] + set.sin(i, event.Tn)
+		case Cos:
+			val += set.Property.Bias[i] + set.cos(i, event.Tn)
+		default:
+		}
+	}
+	set.Value = append(set.Value, val)
 }
