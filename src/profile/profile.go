@@ -24,6 +24,7 @@ func (m *TSMoment) Start(d time.Duration) {
 	// Initialise moment timer
 	m.T0 = time.Now()
 	m.Tout = time.Date(m.T0.Year(), m.T0.Month(), m.T0.Day(), m.T0.Hour(), m.T0.Minute(), m.T0.Second(), m.T0.Nanosecond(), m.T0.Location())
+	m.Tremain = d
 	m.Tout = m.Tout.Add(m.Tremain)
 
 	m.Tlap = time.Date(m.T0.Year(), m.T0.Month(), m.T0.Day(), m.T0.Hour(), m.T0.Minute(), m.T0.Second(), m.T0.Nanosecond(), m.T0.Location())

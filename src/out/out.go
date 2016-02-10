@@ -4,8 +4,10 @@ import (
 	"encoding/csv"
 	"fmt"
 	"os"
+	"profile"
 	"rest"
 	"strconv"
+	"time"
 )
 
 // Enumeration like declaration of output format types
@@ -22,15 +24,12 @@ func (format *EFormatType) String() string {
 
 // Structure completely defines data destination
 type TSDestination struct {
-	Type EFormatType
-	Path string
-	Name string
-	Host string
-	Port int64
-	REST rest.TSRest
-
-	Page chan bool
-	Done chan bool
+	Type EFormatType // Type of output that is addressed in this instance
+	Path string      // Usually a file path when writing to disk
+	Name string      // The text identifier of the data set
+	Host string      // IP address in the formet 192.168.4.194
+	Port int64       // Port on which REST API communicates
+	REST rest.TSRest // Structure that describes the REST output in full
 
 	Verbose bool // enable or disable verbose display during create
 
@@ -45,9 +44,8 @@ func (dst *TSDestination) Init() {
 	switch dst.Type {
 	case CSV:
 		dst.Hdr = make([]string, 0)
-		s := "Time"
 		var b byte
-		for _, b = range []byte(s) {
+		for _, b = range []byte("Time") {
 			dst.Content = append(dst.Content, b)
 		}
 		dst.Content = append(dst.Content, 44) // comma
@@ -70,14 +68,6 @@ func (dst *TSDestination) Init() {
 
 	fmt.Println(dst.Hdr)
 
-}
-
-func (dst *TSDestination) Post() {
-	if dst.Verbose {
-		fmt.Println("dst.Post")
-	}
-	dst.Format()
-	dst.Out()
 }
 
 func (dst *TSDestination) Dump() {
@@ -164,17 +154,17 @@ func (dst *TSDestination) Out() {
 		 * first order solution but generic enough to use as
 		 * default case and data dump if not properly defined in config
 		 */
-		writer := csv.NewWriter(disk)
+		w := csv.NewWriter(disk)
 		for idx, value := range dst.Value {
 			var line = make([]string, 0)
 			line = append(line, strconv.FormatInt(dst.TimeStamp[idx], 10),
 				strconv.FormatFloat(value, 'f', -1, 64))
-			err := writer.Write(line)
+			err := w.Write(line)
 			if err != nil {
 				fmt.Print("Cannot write to file ", err)
 			}
 		}
-		writer.Flush()
+		w.Flush()
 	}
 	dst.Flush()
 }
@@ -184,4 +174,15 @@ func (dst *TSDestination) Flush() {
 	dst.Content = make([]byte, 0)
 	dst.TimeStamp = make([]int64, 0)
 	dst.Value = make([]float64, 0)
+}
+
+func (dst *TSDestination) Wait(Td float64, to chan bool) {
+	var timeout profile.TSProfile
+	timeout.Execute.Start(time.Duration(Td * 1e9))
+	for {
+		if timeout.Execute.IsTimeOut() {
+			break
+		}
+	}
+	//to<-true
 }

@@ -9,29 +9,10 @@ import (
 	"profile"
 )
 
-// Defines the constants for the different data types supported
-const (
-	Sin      string = "Sin"
-	Cos      string = "Cos"
-	Logic    string = "Logic"
-	Clock    string = "Clock"
-	Setpoint string = "Setpoint"
-	Complex  string = "Complex"
-)
-
 // Package constant
 const (
 	pageCSV  int64 = 131072 //page size at which data gets dumped to file
-	pageHTTP int64 = 100    //page size at which data gets batched for HTTP REST API
-)
-
-type EState string
-
-const (
-	UNDEFINED EState = "UNDEFINED"
-	HIGH      EState = "HIGH"
-	LOW       EState = "LOW"
-	TRI       EState = "TRI"
+	pageHTTP int64 = 1      //page size at which data gets batched for HTTP REST API
 )
 
 /**
@@ -42,20 +23,17 @@ const (
 type TSSet struct {
 	Id       int64
 	Property config.TSProperties
-	Dest     out.TSDestination
+	Output   out.TSDestination
+	Profile  profile.TSProfile
 
-	idx  int64
-	idxP int64
+	idxSample int64
+	idxStore  int64
 
 	TimeStamp []int64   // Unix nanoseconds
 	Value     []float64 // normalised before transform
-	State     EState
+	State     config.EState
 
-	Done     chan bool
-	Pause    chan bool
-	Continue chan bool
-
-	Profile profile.TSProfile
+	Done chan bool
 }
 
 func radians(deg float64) float64 {
@@ -69,33 +47,26 @@ func degrees(rad float64) float64 {
 func (set *TSSet) init() {
 	// Start moment measurement
 	set.Profile.Execute.Start(0)
-	set.State = EState(set.Property.State)
+	set.State = set.Property.State
 
-	set.Dest.Type = out.EFormatType(set.Property.Format)
-	set.Dest.Path = set.Property.Name + "." + set.Property.Format
-	set.Dest.Name = set.Property.Name
-	set.Dest.Host = set.Property.Host
-	set.Dest.Port = set.Property.Port
+	set.Output.Type = out.EFormatType(set.Property.Format)
+	set.Output.Path = set.Property.Name + "." + set.Property.Format
+	set.Output.Name = set.Property.Name
+	set.Output.Host = set.Property.Host
+	set.Output.Port = set.Property.Port
 
 	// Initialise the destination
-
-	set.Dest.Init()
+	set.Output.Init()
 	if set.Property.Verbose {
-		fmt.Println(set.Dest.Type)
+		fmt.Println(set.Output.Type)
 	}
 
 	// Initialise the data set buffer indices
-	set.idx = 0
-	set.idxP = 0
+	set.idxSample = 0
+	set.idxStore = 0
 }
 
 func (set *TSSet) Create() {
-
-	// Initiate File IO
-	if set.Property.Verbose {
-		fmt.Println("Create")
-	}
-
 	// Initialise the data set
 	set.init()
 
@@ -104,7 +75,10 @@ func (set *TSSet) Create() {
 	 * arrive here, be transformed and routed to the desired form
 	 * of output.
 	 */
-	set.idx = 0
+	var feedback profile.TSProfile
+	feedback.Execute.Start(1e9)
+
+	set.idxSample = 0
 	var e = make(chan ts.TSEvent)
 	go set.event(e)
 	/**
@@ -119,11 +93,11 @@ func (set *TSSet) Create() {
 		} else {
 			if len(set.Property.Type) <= 1 {
 				switch set.Property.Type[0] {
-				case Sin:
+				case config.SIN:
 					set.sin(0, v.Tn)
-				case Cos:
+				case config.COS:
 					set.cos(0, v.Tn)
-				case Logic:
+				case config.LOGIC:
 					set.logic(&v)
 				default:
 				}
@@ -134,8 +108,23 @@ func (set *TSSet) Create() {
 				 */
 				set.compound(&v)
 			}
+
+			switch set.Property.Mode {
+			case config.REAL:
+				switch set.Property.Format {
+				case "HTTP":
+					var to chan bool
+					set.Output.Wait(v.Td*set.Property.Duration, to)
+				default:
+				}
+			default:
+			}
 		}
 
+		if feedback.Execute.IsTimeOut() {
+			fmt.Print(".")
+			feedback.Execute.Reset(1e9)
+		}
 		/**
 		 * Select (and implement) the output format configured for the
 		 * time series.
@@ -143,59 +132,53 @@ func (set *TSSet) Create() {
 		 *		Set Type is the type of data (transformation applied) in the set
 		 *     	Destination type is the format of the output
 		 */
-		switch set.Dest.Type {
+		switch set.Output.Type {
 		case out.CSV:
-			if set.idx%pageCSV == 0 {
+			if set.idxSample%pageCSV == 0 {
 				set.Process()
 			}
 		case out.HTTP:
-			if set.idx%pageHTTP == 0 {
+			if set.idxSample%pageHTTP == 0 {
 				set.Process()
-				fmt.Printf("%d:%d|", set.Id, set.idx)
-
 			}
 		default:
 		}
-		set.idx++
+		set.idxSample++
 	}
+
 	/**
-	 * Call on the store routine to write the remainder of the data
+	 * Call on the process routine to write the remainder of the data
 	 * that was not handled on a modulus event on page* size
 	 * that may still reside within the buffer to disk
 	 */
-	if set.Dest.Type == out.CSV {
-		set.Process()
-	}
+	set.Process()
 
+	feedback.Execute.Stop()
 	// Stop moment measurement
 	set.Profile.Execute.Stop()
 
 	// Relay information on each generated output
-	fmt.Println(set.Dest.Path)
+	fmt.Println(set.Output.Path)
 	fmt.Println(set.Profile.Execute.Telapsed.Seconds(), "s")
 
 	set.Done <- true
 }
 
 func (set *TSSet) Process() {
-	if set.Property.Verbose {
-		fmt.Println("data.Store")
-	}
-
 	// Create space in the file buffer
-	set.Dest.TimeStamp = make([]int64, len(set.TimeStamp))
-	set.Dest.Value = make([]float64, len(set.Value))
+	set.Output.TimeStamp = make([]int64, len(set.TimeStamp))
+	set.Output.Value = make([]float64, len(set.Value))
 
 	// Transfer available data to the file buffer
-	copy(set.Dest.TimeStamp, set.TimeStamp)
-	copy(set.Dest.Value, set.Value)
+	copy(set.Output.TimeStamp, set.TimeStamp)
+	copy(set.Output.Value, set.Value)
 
 	// Clear the source buffer that sits within
 	set.TimeStamp = make([]int64, 0)
 	set.Value = make([]float64, 0)
 
-	set.idxP = set.idx
-	set.Dest.Dump()
+	set.idxStore = set.idxSample
+	set.Output.Dump()
 
 }
 
@@ -214,6 +197,9 @@ func (set *TSSet) event(x chan ts.TSEvent) {
 	for event := range e {
 		// Send event up the pipe
 		x <- event
+		if set.Property.Verbose {
+			fmt.Print("|", event.Td)
+		}
 	}
 	close(x)
 }
@@ -249,30 +235,39 @@ func (set *TSSet) cos(idx int, v float64) float64 {
 }
 
 func (set *TSSet) logic(event *ts.TSEvent) {
+	/**
+	 * Change the state of the signal only on an identified Toggle event
+	 * associated with an absolute tim eni the time series
+	 */
 	if event.Type == ts.Toggle {
 		switch set.State {
-		case UNDEFINED:
-			set.State = LOW
-		case HIGH:
-			set.State = LOW
-		case LOW:
-			set.State = HIGH
-		case TRI:
-			set.State = TRI
+		case config.UNDEFINED:
+			set.State = config.LOW
+		case config.HIGH:
+			set.State = config.LOW
+		case config.LOW:
+			set.State = config.HIGH
+		case config.TRI:
+			set.State = config.TRI
 			// Need to find a way to represent this in data
 			set.Value = append(set.Value, 0)
 		default:
-			set.State = LOW
+			set.State = config.LOW
 		}
 	}
+	/**
+	 * Set the value according to the current state of the
+	 * signal. As long as a state persists, the value for that state should
+	 * persist.
+	 */
 	switch set.State {
-	case UNDEFINED:
+	case config.UNDEFINED:
 		set.Value = append(set.Value, 0)
-	case HIGH:
+	case config.HIGH:
 		set.Value = append(set.Value, set.Property.High)
-	case LOW:
+	case config.LOW:
 		set.Value = append(set.Value, set.Property.Low)
-	case TRI:
+	case config.TRI:
 		// Need to find a way to represent this in data
 		set.Value = append(set.Value, 0)
 	default:
@@ -284,9 +279,9 @@ func (set *TSSet) compound(event *ts.TSEvent) {
 	var val float64 = float64(0)
 	for i, v := range set.Property.Type {
 		switch v {
-		case Sin:
+		case config.SIN:
 			val += set.Property.Bias[i] + set.sin(i, event.Tn)
-		case Cos:
+		case config.COS:
 			val += set.Property.Bias[i] + set.cos(i, event.Tn)
 		default:
 		}

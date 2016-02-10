@@ -1,3 +1,14 @@
+#20	Move most of the const declaration for 'enum' types to the config.go file
+	and redefine the types in the TSProperties struct to make use of these
+	types.
+#19 Implement the REAL Mode to release HTTP requests according to the relative
+	differences between absolute points in time generated to fit within the
+	Duration (in seconds) defined in the config file
+#18 Update the Type array to take capitalised strings as is the way most other
+	config settings are defined in the config file
+#17 Add Mode to the configuration file.  Mode determines the way in which
+	the data set is released through the Output.
+
 #16 Extend `Bias`, `Type`, `Freq` and `Amp` to arrays to support the compound
 #15	Add Bias configuration item
 #14 Implement a compound type signal that is built out of an array of Sin and 

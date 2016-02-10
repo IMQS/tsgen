@@ -21,8 +21,25 @@ const (
 
 // Complete defnition of a exact point in time for series
 type TSEvent struct {
-	Tn   float64
+	Idx  uint64  // Sample index as a cumulative counter (max: Property.Samples)
+	Tn   float64 // Current point in time
+	Tp   float64 // Previous point in time
+	Td   float64 // Duration between points in time
 	Type EEventType
+}
+
+func EventFixedInterval(config *config.TSProperties, e chan TSEvent) {
+	if config.Samples <= 0 {
+
+	} else {
+		interval := float64(1.00) / float64(config.Samples)
+		if interval <= 0 {
+
+		} else {
+
+		}
+	}
+
 }
 
 func EventSpreadInterval(config *config.TSProperties, e chan TSEvent) {
@@ -53,6 +70,8 @@ func EventSpreadInterval(config *config.TSProperties, e chan TSEvent) {
 	}
 
 	idxEvent = 0
+	var pevent TSEvent
+	var event TSEvent
 	// Call on utility function to sort Events that they can be used in chronologic order
 	Events = util.QSortU64(Events)
 	for idx = 0; idx < config.Samples; idx++ {
@@ -60,8 +79,25 @@ func EventSpreadInterval(config *config.TSProperties, e chan TSEvent) {
 		Tn := float64((float64(idx) * interval) + (interval * reach))
 
 		// Create event at this point in the time series, with default values
-		event := TSEvent{Tn: 0.00, Type: None}
+		event = TSEvent{Idx: 0, Tn: 0.00, Tp: 0.00, Td: 0.00, Type: None}
+		event.Idx = idx
+		// Has to be assigned to before calculating the duration between points
 		event.Tn = Tn
+		// Calculate duration (Td)
+		if (&pevent) == nil {
+			event.Tp = Tn
+		} else {
+			/**
+			 * Use the previous point's absolute time as the previous time of the
+			 * current event
+			 */
+			event.Tp = pevent.Tn
+			event.Td = event.Tn - event.Tp
+			/** NB NOTE: Store a copy of the last event in order to be able to
+			 * calculate the diffrence in absolute times between points
+			 */
+			pevent = TSEvent{Idx: event.Idx, Tn: event.Tn, Tp: event.Tp, Td: event.Td, Type: event.Type}
+		}
 
 		if idxEvent < uint64(len(Events)) {
 			if len(Events) <= 0 {

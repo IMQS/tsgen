@@ -104,15 +104,16 @@ func (r *TSRest) Add(host string, port int64) {
 
 	}
 
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		//	panic(err)
-	}
-	if resp != nil {
-		defer resp.Body.Close()
-	}
-
+	/*
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		if err != nil {
+			//	panic(err)
+		}
+		if resp != nil {
+			defer resp.Body.Close()
+		}
+	*/
 }
 
 func (r *TSRest) Reset() {

@@ -7,6 +7,32 @@ import (
 	"time"
 )
 
+type EMode string
+
+const (
+	REAL  EMode = "REAL"
+	LOAD  EMode = "LOAD"
+	STORE EMode = "STORE"
+)
+
+// Defines the constants for the different data types supported
+type ESignal string
+
+const (
+	SIN   ESignal = "SIN"
+	COS   ESignal = "COS"
+	LOGIC ESignal = "LOGIC"
+)
+
+type EState string
+
+const (
+	UNDEFINED EState = "UNDEFINED"
+	HIGH      EState = "HIGH"
+	LOW       EState = "LOW"
+	TRI       EState = "TRI"
+)
+
 type TSConfig struct {
 	Property []TSProperties
 }
@@ -17,13 +43,14 @@ type TSProperties struct {
 	Format string // Output file format
 	Host   string // Host name in IP address format
 	Port   int64  // Port number
+	Mode   EMode  // Time based or load
 
 	// Content
 	Start    time.Time // specified in year, month etc
 	Seed     int64     // unitless
 	Samples  uint64    // unitless
 	Duration float64   // seconds
-	Type     []string  // data type
+	Type     []ESignal // data type
 	Compound bool      // Combine different signals to form one
 
 	Bias []float64
@@ -33,7 +60,7 @@ type TSProperties struct {
 	Amp  []float64 // unitless
 	// Logic
 	Toggles []uint64 // Number of toggles in logic
-	State   string   // Start state for logic
+	State   EState   // Start state for logic
 	High    float64  // Factor to scale the logic HIGH signal level
 	Low     float64  // Factor to scale the logic LOW signal level
 

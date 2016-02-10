@@ -3,13 +3,14 @@
 		{
 			"Name": "batt_voltage",
 			"Format" : "CSV",
+			"Mode" : "STORE",
 
 			"Start" : "2016-02-01T14:00:00+02:00",
 			"Seed": 3369,
-			"Samples": 100000,
+			"Samples": 100000000,
 			"Duration" : 1,
 			"Bias" : [12, 0, 0, 0, 0],
-			"Type" : ["Sin", "Sin", "Cos","Sin", "Cos"],
+			"Type" : ["SIN", "SIN", "SIN","SIN", "SIN"],
 
 			"Freq": [50,2500, 5000, 15000, 20000, 50000],
 			"Amp" : [0.3, 0.1, 0.1, 0.1, 0.05, 0.05]
@@ -17,27 +18,69 @@
 		{
 			"Name": "batt_current",
 			"Format" : "CSV",
+			"Mode" : "STORE",
 
 			"Start" : "2016-02-01T14:00:00+02:00",
 			"Seed": 3369,
-			"Samples": 100000,
+			"Samples": 100000000,
 			"Duration" : 1,
 			"Bias" : [12],
-			"Type" : ["Cos"],
+			"Type" : ["COS"],
 
 			"Freq": [2],
 			"Amp" : [0.3]
 		},
 		{
-			"Name": "alarm_batt_current",
+			"Name": "gen_voltage",
 			"Format" : "CSV",
+			"Mode" : "STORE",
 
 			"Start" : "2016-02-01T14:00:00+02:00",
 			"Seed": 3369,
-			"Samples": 100000,
+			"Samples": 100000000,
+			"Duration" : 1,
+			"Bias" : [12, 0, 0, 0, 0],
+			"Type" : ["SIN", "SIN", "SIN","SIN", "SIN"],
+
+			"Freq": [50,2500, 5000, 15000, 20000, 50000],
+			"Amp" : [0.3, 0.1, 0.1, 0.1, 0.05, 0.05]
+		},
+		{
+			"Name": "gen_current",
+			"Format" : "CSV",
+			"Mode" : "STORE",
+
+			"Start" : "2016-02-01T14:00:00+02:00",
+			"Seed": 3369,
+			"Samples": 100000000,
 			"Duration" : 1,
 			"Bias" : [12],
-			"Type" : ["Logic"],
+			"Type" : ["LOGIC"],
+
+			"Freq": [2],
+			"Amp" : [0.3],
+
+			"Toggles" : [18954],
+			"State"	: "LOW",
+			"High" : 3.3,
+			"Low" : 0
+		},		
+		{
+			"Name": "alarm_batt_current",
+			"Format" : "HTTP",
+			"Host" : "192.168.4.194",
+			"Port" : 4242,
+			"Mode" : "REAL",
+
+			"Start" : "2016-02-01T14:00:00+02:00",
+			"Seed": 3369,
+			"Samples": 1000,
+			"Duration" : 10,
+			"Bias" : [12],
+			"Type" : ["LOGIC"],
+
+			"Freq" : [10],
+			"Amp" : [2],
 
 			"Toggles" : [148],
 			"State"	: "LOW",
