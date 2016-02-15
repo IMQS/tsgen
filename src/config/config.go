@@ -19,9 +19,10 @@ const (
 type ESignal string
 
 const (
-	SIN   ESignal = "SIN"
-	COS   ESignal = "COS"
-	LOGIC ESignal = "LOGIC"
+	SIN    ESignal = "SIN"
+	COS    ESignal = "COS"
+	LOGIC  ESignal = "LOGIC"
+	RANDOM ESignal = "RANDOM"
 )
 
 type EState string
@@ -39,14 +40,19 @@ type TSConfig struct {
 
 type TSProperties struct {
 	// Set/File
-	Name   string // Identifier string for time series data
-	Format string // Output file format
-	Host   string // Host name in IP address format
-	Port   int64  // Port number
-	Mode   EMode  // Time based or load
+	Name       string // Identifier string for time series data
+	Format     string // Output file format
+	Host       string // Host name in IP address format
+	Port       int64  // Port number
+	Mode       EMode  // Time based or load
+	Batch      uint64 // Number of samples to batch for an HTTP post
+	Sites      uint64 // Number of sites to simulate data for
+	Distribute bool   // Distribute points between Sites at random
+	Spools     int64  // Number of pools to sping up
 
 	// Content
 	Start    time.Time // specified in year, month etc
+	Now      bool      // When true overrides the Start time with Now()
 	Seed     int64     // unitless
 	Samples  uint64    // unitless
 	Duration float64   // seconds

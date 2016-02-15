@@ -1,39 +1,71 @@
-#20	Move most of the const declaration for 'enum' types to the config.go file
+.33 To allow for the 'Spools' functionality, the REST property of the output
+	had to be extended to an array, to allow independent formatting of each
+	SpoolStamp and SpoolValue set.
+.32 Create the SpoolStamp and SpoolValue sets in the TSDestination structure
+.31 Output time stamp and value arrays were extended to multidimensional arrays
+	to maintain index independance between the concurrent HTTP spools (within
+	a data Create process)
+.30 RANDOM type may also be used with a compound type as one of the signal
+	types defined in the array.  NOTE that frequency should also be populated
+	as is required for compound signals, although it may not be used in the 
+	signal generation
+.29 RANDOM data type added to the data transforms.  Random values are biased
+	around 'Bias' property.  Absolute values between 0 and 'Amp'. Random 
+	generator to determin the sign of the value which is multiplied to the 
+	0 to 'Amp' range absolute value.
+.28 env.bat file created to set up environment before running code or 
+	executable
+.27 Each database interface is to be defined in package rest with the same 
+	function names implementing similar functions on each database interface
+.26 HTTP data is now processed by combining calls to the Create REST function
+	instead of calling the Batch function
+.25 If the'Now' flag is set, the Start time is replaced with the current time
+	at the start of creating the data series.  
+.24 HTTP data released from output may now concurrently be processed from 
+	the specified number of 'Spools', each 'Batch' being awarded to the first
+	Spool that is available to handle another job
+.23 Data at present can be 'distributed' between any amount of 'sites'. This
+	updates the name of the data set with an appended site number.
+.22 User specified 'Batch' page sizes that fall back on default values if not 
+	specified
+.21 Add 'Batch', 'Sites, 'Spools', 'Distribute' and 'Now' properties. 
+
+.20	Move most of the const declaration for 'enum' types to the config.go file
 	and redefine the types in the TSProperties struct to make use of these
 	types.
-#19 Implement the REAL Mode to release HTTP requests according to the relative
+.19 Implement the REAL Mode to release HTTP requests according to the relative
 	differences between absolute points in time generated to fit within the
 	Duration (in seconds) defined in the config file
-#18 Update the Type array to take capitalised strings as is the way most other
+.18 Update the Type array to take capitalised strings as is the way most other
 	config settings are defined in the config file
-#17 Add Mode to the configuration file.  Mode determines the way in which
+.17 Add Mode to the configuration file.  Mode determines the way in which
 	the data set is released through the Output.
 
-#16 Extend `Bias`, `Type`, `Freq` and `Amp` to arrays to support the compound
-#15	Add Bias configuration item
-#14 Implement a compound type signal that is built out of an array of Sin and 
+.16 Extend `Bias`, `Type`, `Freq` and `Amp` to arrays to support the compound
+.15	Add Bias configuration item
+.14 Implement a compound type signal that is built out of an array of Sin and 
 	Cos types at this point in time
 
-#13 Implement the HTTP POST support for single as well as batch HTTP requests
-#12 Implement 'High' and 'Low' scaling factors for the Logic data type to
+.13 Implement the HTTP POST support for single as well as batch HTTP requests
+.12 Implement 'High' and 'Low' scaling factors for the Logic data type to
 	scale the HIGH and LOW logical signal values
-#11 Use the events and state to generate Logic signals that 
+.11 Use the events and state to generate Logic signals that 
 	change at random intervals throughout the time series distribution
 	but only the amount of times specified
-#10 Implement configuration properties to allow for the Logic data type
-#9 	Implement a toggle switcher that flips between STATEs on each toggle event
-#8 	Register toggle events on predetermined amount of samples
-#7	Generate event nodes
-#6	Implement quick sort utility since sort package does not support sorting 
+.10 Implement configuration properties to allow for the Logic data type
+.9 	Implement a toggle switcher that flips between STATEs on each toggle event
+.8 	Register toggle events on predetermined amount of samples
+.7	Generate event nodes
+.6	Implement quick sort utility since sort package does not support sorting 
 	[]UInt64
 
-#5	Add the basic moment measurement tool to the profiling package, use it to 
+.5	Add the basic moment measurement tool to the profiling package, use it to 
 	measure the time it takes to generate an output
-#4	Remove the verbose display of each data point generated.  Send to CSV
+.4	Remove the verbose display of each data point generated.  Send to CSV
 	output if data has to be evaluated or visualised.
-#3. Add events to time series generation and return as structure that 
+.3. Add events to time series generation and return as structure that 
 	contains relevant event information for exact point in series, this commit 
 	DOESN'T make use of the event YET.	
-#2. More elaborate comments in the packages.
-#1.	Change package 'file' to 'out' since the possible destinations have been 
+.2. More elaborate comments in the packages.
+.1.	Change package 'file' to 'out' since the possible destinations have been 
 	updated to include queues, http requests etc.

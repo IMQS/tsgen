@@ -5,14 +5,15 @@ import (
 	"data/ts"
 	"fmt"
 	"math"
+	"math/rand"
 	"out"
 	"profile"
 )
 
 // Package constant
 const (
-	pageCSV  int64 = 131072 //page size at which data gets dumped to file
-	pageHTTP int64 = 1      //page size at which data gets batched for HTTP REST API
+	pageCSV  uint64 = 131072 //page size at which data gets dumped to file
+	pageHTTP uint64 = 1      //page size at which data gets batched for HTTP REST API
 )
 
 /**
@@ -21,19 +22,21 @@ const (
  * of the generated series at a time
  */
 type TSSet struct {
-	Id       int64
-	Property config.TSProperties
-	Output   out.TSDestination
-	Profile  profile.TSProfile
+	Id       int64               // Unique identifier of data set
+	Property config.TSProperties // Set of properties that fully describe set
+	Output   out.TSDestination   // Fully describes the type of output for set
+	Profile  profile.TSProfile   // Tool to do simple profiling on code
 
-	idxSample int64
-	idxStore  int64
+	idxSample int64 // Index of the current sample being processed in set
+	idxStore  int64 // Index of previous sample processed in set
+	srcBase   rand.Source
+	srcSign   rand.Source
 
-	TimeStamp []int64   // Unix nanoseconds
-	Value     []float64 // normalised before transform
-	State     config.EState
+	Stamp []int64       // Unix nanoseconds
+	Value []float64     // normalised before transform
+	State config.EState // Start up state for LOGIC signals
 
-	Done chan bool
+	Done chan bool // Each set acknowledges when it has completed
 }
 
 func radians(deg float64) float64 {
@@ -54,6 +57,12 @@ func (set *TSSet) init() {
 	set.Output.Name = set.Property.Name
 	set.Output.Host = set.Property.Host
 	set.Output.Port = set.Property.Port
+	set.Output.Sites = set.Property.Sites
+	set.Output.Distribute = set.Property.Distribute
+	set.Output.Spools = set.Property.Spools
+
+	set.srcBase = rand.NewSource(set.Property.Seed)
+	set.srcSign = rand.NewSource(math.MaxInt64 - set.Property.Seed)
 
 	// Initialise the destination
 	set.Output.Init()
@@ -99,6 +108,8 @@ func (set *TSSet) Create() {
 					set.cos(0, v.Tn)
 				case config.LOGIC:
 					set.logic(&v)
+				case config.RANDOM:
+					set.random(0)
 				default:
 				}
 			} else {
@@ -114,7 +125,7 @@ func (set *TSSet) Create() {
 				switch set.Property.Format {
 				case "HTTP":
 					var to chan bool
-					set.Output.Wait(v.Td*set.Property.Duration, to)
+					set.Output.Wait((v.Td*1.0)*set.Property.Duration, to)
 				default:
 				}
 			default:
@@ -134,14 +145,18 @@ func (set *TSSet) Create() {
 		 */
 		switch set.Output.Type {
 		case out.CSV:
-			if set.idxSample%pageCSV == 0 {
-				set.Process()
+			if set.Property.Batch <= 0 {
+				set.Property.Batch = pageCSV
 			}
 		case out.HTTP:
-			if set.idxSample%pageHTTP == 0 {
-				set.Process()
+			if set.Property.Batch <= 0 {
+				set.Property.Batch = pageHTTP
 			}
 		default:
+		}
+
+		if set.idxSample%int64(set.Property.Batch) == 0 {
+			set.Process()
 		}
 		set.idxSample++
 	}
@@ -152,6 +167,30 @@ func (set *TSSet) Create() {
 	 * that may still reside within the buffer to disk
 	 */
 	set.Process()
+
+	switch set.Output.Type {
+	case out.CSV:
+	case out.HTTP:
+		// No more jobs, all samples have been processed
+		close(set.Output.Jobs)
+
+		var s int64
+		// Wait on all Spools to spin down
+		for s = 0; s < set.Property.Spools; s++ {
+			<-set.Output.Done
+		}
+		fmt.Println("Spools")
+
+		var j uint64
+		var jobs uint64
+		jobs = set.Property.Samples/set.Property.Batch + 1
+		// Wait on all Jobs to complete
+		for j = 0; j < jobs; j++ {
+			<-set.Output.Jobs
+		}
+		fmt.Println("Jobs:", set.Output.Job)
+	default:
+	}
 
 	feedback.Execute.Stop()
 	// Stop moment measurement
@@ -166,18 +205,22 @@ func (set *TSSet) Create() {
 
 func (set *TSSet) Process() {
 	// Create space in the file buffer
-	set.Output.TimeStamp = make([]int64, len(set.TimeStamp))
+	set.Output.Stamp = make([]int64, len(set.Stamp))
 	set.Output.Value = make([]float64, len(set.Value))
 
-	// Transfer available data to the file buffer
-	copy(set.Output.TimeStamp, set.TimeStamp)
+	copy(set.Output.Stamp, set.Stamp)
 	copy(set.Output.Value, set.Value)
 
+	//fmt.Println(set.Output.Stamp)
+	//fmt.Println(set.Output.Value)
+
 	// Clear the source buffer that sits within
-	set.TimeStamp = make([]int64, 0)
+	set.Stamp = make([]int64, 0)
 	set.Value = make([]float64, 0)
 
+	// Reset index offset
 	set.idxStore = set.idxSample
+
 	set.Output.Dump()
 
 }
@@ -192,7 +235,7 @@ func (set *TSSet) event(x chan ts.TSEvent) {
 	fmt.Println(set.Property.Toggles)
 	go ts.EventSpreadInterval(&set.Property, e)
 
-	set.TimeStamp = make([]int64, 0)
+	set.Stamp = make([]int64, 0)
 	set.Value = make([]float64, 0)
 	for event := range e {
 		// Send event up the pipe
@@ -205,13 +248,32 @@ func (set *TSSet) event(x chan ts.TSEvent) {
 }
 
 func (set *TSSet) clear() {
-	set.TimeStamp = make([]int64, 0)
+	set.Stamp = make([]int64, 0)
 	set.Value = make([]float64, 0)
 }
 
 func (set *TSSet) stamp(v float64) {
 	nano := int64(v * set.Property.Duration * 1e9)
-	set.TimeStamp = append(set.TimeStamp, set.Property.Start.UnixNano()+nano)
+	set.Stamp = append(set.Stamp, set.Property.Start.UnixNano()+nano)
+
+}
+
+func (set *TSSet) random(idx int) float64 {
+	reach := float64(set.srcBase.Int63()) / float64(math.MaxInt64)
+	sign := float64(set.srcSign.Int63()) / float64(math.MaxInt64)
+	var val float64
+	if sign <= 0.5 {
+		val = -1.00 * reach * set.Property.Amp[idx]
+	} else {
+		val = reach * set.Property.Amp[idx]
+	}
+
+	if set.Property.Compound {
+		// No specific action as of yet
+	} else {
+		set.Value = append(set.Value, set.Property.Bias[idx]+val)
+	}
+	return val
 }
 
 func (set *TSSet) sin(idx int, v float64) float64 {
@@ -283,6 +345,8 @@ func (set *TSSet) compound(event *ts.TSEvent) {
 			val += set.Property.Bias[i] + set.sin(i, event.Tn)
 		case config.COS:
 			val += set.Property.Bias[i] + set.cos(i, event.Tn)
+		case config.RANDOM:
+			val += set.Property.Bias[i] + set.random(i)
 		default:
 		}
 	}

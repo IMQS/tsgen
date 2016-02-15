@@ -12,7 +12,11 @@ import (
 	//"util"
 )
 
-type TSRest struct {
+type TSKairos struct {
+	Json bytes.Buffer
+}
+
+type TSNewts struct {
 	Json bytes.Buffer
 }
 
@@ -26,12 +30,16 @@ func write(b *bytes.Buffer, a []byte) {
 	}
 }
 
-func (r *TSRest) Create(name string, stamp int64, value float64) []byte {
+func (r *TSKairos) Begin() {
+	write(&r.Json, []byte(`[`))
+}
+
+func (r *TSKairos) Create(name string, stamp int64, value float64) []byte {
 
 	// Clear the buffer
-	r.Reset()
+	//r.Reset()
 
-	write(&r.Json, []byte(`[{`))
+	write(&r.Json, []byte(`{`))
 
 	write(&r.Json, []byte(strconv.Quote(`name`)))
 	write(&r.Json, []byte(`:`))
@@ -47,13 +55,21 @@ func (r *TSRest) Create(name string, stamp int64, value float64) []byte {
 	write(&r.Json, []byte(`:`))
 	write(&r.Json, []byte(strconv.FormatFloat(value, 'f', -1, 64)))
 
-	write(&r.Json, []byte(`}]`))
+	write(&r.Json, []byte(`}`))
 
 	return r.Json.Bytes()
 
 }
 
-func (r *TSRest) Batch(name string, stamp *[]int64, value *[]float64) []byte {
+func (r *TSKairos) Another() {
+	write(&r.Json, []byte(`,`))
+}
+
+func (r *TSKairos) End() {
+	write(&r.Json, []byte(`]`))
+}
+
+func (r *TSKairos) Batch(name string, stamp *[]int64, value *[]float64) []byte {
 
 	// Clear the buffer
 	r.Reset()
@@ -81,11 +97,13 @@ func (r *TSRest) Batch(name string, stamp *[]int64, value *[]float64) []byte {
 	write(&r.Json, []byte(`]`))
 	write(&r.Json, []byte(`}]`))
 
+	fmt.Println(string(r.Json.Bytes()))
+
 	return r.Json.Bytes()
 
 }
 
-func (r *TSRest) Add(host string, port int64) {
+func (r *TSKairos) Add(host string, port int64) {
 	var url string = "http://"
 	var cmd string = "api/v1/datapoints"
 	//var cmd string = "api/put/?details&sync"
@@ -104,6 +122,8 @@ func (r *TSRest) Add(host string, port int64) {
 
 	}
 
+	fmt.Print("_")
+
 	/*
 		client := &http.Client{}
 		resp, err := client.Do(req)
@@ -116,6 +136,6 @@ func (r *TSRest) Add(host string, port int64) {
 	*/
 }
 
-func (r *TSRest) Reset() {
+func (r *TSKairos) Reset() {
 	r.Json.Reset()
 }

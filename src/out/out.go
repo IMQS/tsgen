@@ -3,11 +3,17 @@ package out
 import (
 	"encoding/csv"
 	"fmt"
+	"math"
+	"math/rand"
 	"os"
 	"profile"
 	"rest"
 	"strconv"
 	"time"
+)
+
+const (
+	csvContent int = 0
 )
 
 // Enumeration like declaration of output format types
@@ -29,18 +35,34 @@ type TSDestination struct {
 	Name string      // The text identifier of the data set
 	Host string      // IP address in the formet 192.168.4.194
 	Port int64       // Port on which REST API communicates
-	REST rest.TSRest // Structure that describes the REST output in full
+
+	Sites      uint64
+	Distribute bool
+	Spools     int64           // Fully describes the spools
+	REST       []rest.TSKairos // Structure that describes the REST output in full
+	Job        int64
+	Jobs       chan int64 // Manages jobs for spooling
+	Done       chan int64 // Manages jobs for spooling
 
 	Verbose bool // enable or disable verbose display during create
 
-	Hdr       []string  // Coloumn headers for CSV output type
-	TimeStamp []int64   // Local buffer for time stamp storage
-	Value     []float64 // Local buffer for Value storage
-	Content   []byte    // Formatted content for output
+	Seed    int64
+	srcSite rand.Source
+
+	// CSV
+	Hdr     []string // Coloumn headers for CSV output type
+	Content []byte   // Formatted content for output
+	// HTTP
+	Stamp      []int64     // Local buffer for time stamp storage
+	Value      []float64   // Local buffer for Value storage
+	SpoolStamp [][]int64   // Local buffer for time stamp storage
+	SpoolValue [][]float64 // Local buffer for Value storage
+
 }
 
 func (dst *TSDestination) Init() {
-	// Standard definition for time series coloumn headers
+	dst.Seed = 100
+	dst.srcSite = rand.NewSource(dst.Seed)
 	switch dst.Type {
 	case CSV:
 		dst.Hdr = make([]string, 0)
@@ -63,6 +85,18 @@ func (dst *TSDestination) Init() {
 		}
 		// Close the file so that it may be opened in a different mode
 		disk.Close()
+	case HTTP:
+		dst.REST = make([]rest.TSKairos, dst.Spools)
+		dst.SpoolStamp = make([][]int64, dst.Spools)
+		dst.SpoolValue = make([][]float64, dst.Spools)
+		dst.Job = 0
+		dst.Jobs = make(chan int64)
+		dst.Done = make(chan int64, dst.Spools)
+		var s int64
+		for s = 0; s < dst.Spools; s++ {
+			go dst.Spool(s)
+		}
+
 	default:
 	}
 
@@ -74,16 +108,32 @@ func (dst *TSDestination) Dump() {
 	if dst.Verbose {
 		fmt.Println("dst.Dump")
 	}
-	dst.Format()
+
+	if dst.Type == CSV {
+		dst.Format(0)
+	}
 	dst.Out()
+
 }
 
-func (dst *TSDestination) Format() {
+func (dst *TSDestination) Spool(id int64) {
+	for _ = range dst.Jobs {
+		dst.Format(id)
+		// Data already formatted to content, use REST API
+		dst.REST[id].Add(dst.Host, dst.Port)
+		fmt.Print("#", dst.Job, id)
+		dst.Job++
+	}
+	fmt.Print("@", id)
+	dst.Done <- id
+}
+
+func (dst *TSDestination) Format(id int64) {
 	/*
 	 * Implement formatting for set of data made available to
 	 * the output according to the format type specifier config item
 	 */
-	if len(dst.TimeStamp) != len(dst.Value) {
+	if len(dst.Stamp) != len(dst.Value) {
 		/**
 		 * There is no corresponding y value for each
 		 * independant x value and thus the series
@@ -93,7 +143,7 @@ func (dst *TSDestination) Format() {
 	} else {
 		switch dst.Type {
 		case CSV:
-			for idx, v := range dst.TimeStamp {
+			for idx, v := range dst.Stamp {
 				dst.Content = strconv.AppendInt(dst.Content, v, 10)
 				dst.Content = append(dst.Content, 44) // comma
 				dst.Content = strconv.AppendFloat(dst.Content, dst.Value[idx], 'f', -1, 64)
@@ -107,10 +157,76 @@ func (dst *TSDestination) Format() {
 			 * Structured to POST for each value pair produced by the value
 			 * pump
 			 */
-			dst.REST.Batch(dst.Name, &dst.TimeStamp, &dst.Value)
+			dst.SpoolStamp[id] = make([]int64, 0)
+			dst.SpoolValue[id] = make([]float64, 0)
+			dst.SpoolStamp[id] = make([]int64, len(dst.Stamp))
+			dst.SpoolValue[id] = make([]float64, len(dst.Value))
+			copy(dst.SpoolStamp[id], dst.Stamp)
+			copy(dst.SpoolValue[id], dst.Value)
+
+			var metric string
+			dst.REST[id].Begin()
+			for idxSeries := 0; idxSeries < len(dst.SpoolStamp[id]); idxSeries++ {
+				if dst.Distribute {
+					val := int64((float64(dst.srcSite.Int63()) / float64(math.MaxInt64)) * float64(dst.Sites))
+					metric = strconv.FormatInt(val, 10)
+				}
+				dst.REST[id].Create(dst.Name+metric, dst.SpoolStamp[id][idxSeries], dst.SpoolValue[id][idxSeries])
+				if idxSeries < (len(dst.SpoolStamp[id]) - 1) {
+					dst.REST[id].Another()
+				}
+			}
+			dst.REST[id].End()
+			//fmt.Println(string(dst.REST[id].Json.Bytes()))
+
+			//if dst.Distribute {
+			//	val := int64((float64(dst.srcSite.Int63()) / float64(math.MaxInt64)) * float64(dst.Sites))
+			//	metric = strconv.FormatInt(val, 10)
+			//}
+			//dst.REST[id].Batch(dst.Name+metric, &dst.SpoolStamp[id], &dst.SpoolValue[id])
+
 		default:
 		}
 	}
+}
+
+func (dst *TSDestination) Out() {
+	if dst.Verbose {
+		fmt.Println("dst.Write")
+	}
+
+	switch dst.Type {
+	case CSV:
+		disk := dst.Open()
+		defer dst.Close(disk)
+
+		// Data already formatted to content, write to disk
+		disk.Write(dst.Content)
+		dst.Flush()
+	case HTTP:
+		// Add a job for the first available spool to process
+		dst.Jobs <- dst.Job
+	default:
+		disk := dst.Open()
+		defer dst.Close(disk)
+		/**
+		 * Default CSV format writer for data set implemented as
+		 * first order solution but generic enough to use as
+		 * default case and data dump if not properly defined in config
+		 */
+		w := csv.NewWriter(disk)
+		for idx, value := range dst.Value {
+			var line = make([]string, 0)
+			line = append(line, strconv.FormatInt(dst.Stamp[idx], 10),
+				strconv.FormatFloat(value, 'f', -1, 64))
+			err := w.Write(line)
+			if err != nil {
+				fmt.Print("Cannot write to file ", err)
+			}
+		}
+		w.Flush()
+	}
+
 }
 
 func (dst *TSDestination) Open() *os.File {
@@ -131,49 +247,18 @@ func (dst *TSDestination) Close(disk *os.File) {
 	disk.Close()
 }
 
-func (dst *TSDestination) Out() {
-	if dst.Verbose {
-		fmt.Println("dst.Write")
-	}
-
-	switch dst.Type {
-	case CSV:
-		disk := dst.Open()
-		defer dst.Close(disk)
-
-		// Data already formatted to content, write to disk
-		disk.Write(dst.Content)
-	case HTTP:
-		// Data already formatted to content, use REST API
-		dst.REST.Add(dst.Host, dst.Port)
-	default:
-		disk := dst.Open()
-		defer dst.Close(disk)
-		/**
-		 * Default CSV format writer for data set implemented as
-		 * first order solution but generic enough to use as
-		 * default case and data dump if not properly defined in config
-		 */
-		w := csv.NewWriter(disk)
-		for idx, value := range dst.Value {
-			var line = make([]string, 0)
-			line = append(line, strconv.FormatInt(dst.TimeStamp[idx], 10),
-				strconv.FormatFloat(value, 'f', -1, 64))
-			err := w.Write(line)
-			if err != nil {
-				fmt.Print("Cannot write to file ", err)
-			}
-		}
-		w.Flush()
-	}
-	dst.Flush()
-}
-
 func (dst *TSDestination) Flush() {
 	// Flush the content of the output block and reset the buffers
-	dst.Content = make([]byte, 0)
-	dst.TimeStamp = make([]int64, 0)
-	dst.Value = make([]float64, 0)
+	switch dst.Type {
+	case CSV:
+		dst.Content = make([]byte, 0)
+		dst.Stamp = make([]int64, 0)
+		dst.Value = make([]float64, 0)
+	case HTTP:
+	default:
+
+	}
+
 }
 
 func (dst *TSDestination) Wait(Td float64, to chan bool) {

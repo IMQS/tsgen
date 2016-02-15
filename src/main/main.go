@@ -5,6 +5,7 @@ import (
 	"data"
 	"fmt"
 	"profile"
+	"time"
 )
 
 var voltage data.TSSet
@@ -32,6 +33,9 @@ func main() {
 		 */
 		sets[idxProps].Id = int64(idxProps)
 		sets[idxProps].Property = v
+		if sets[idxProps].Property.Now {
+			sets[idxProps].Property.Start = time.Now()
+		}
 		sets[idxProps].Property.Verbose = false
 		sets[idxProps].Output.Verbose = false
 
