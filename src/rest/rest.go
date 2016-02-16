@@ -19,6 +19,7 @@ type TSKairosMeasurement struct {
 	metric string
 	stamp  int64
 	value  float64
+	tags   map[string]string
 }
 
 func (m *TSKairosMeasurement) MarshalJSON() ([]byte, error) {
@@ -26,10 +27,12 @@ func (m *TSKairosMeasurement) MarshalJSON() ([]byte, error) {
 		Name      string  `json:"name"`
 		Timestamp int64   `json:"timestamp"`
 		Value     float64 `json:"value"`
+		Tags      map[string]string
 	}{
 		Name:      fmt.Sprintf("%s%s", m.name, m.metric),
 		Timestamp: m.stamp,
 		Value:     m.value,
+		Tags:      m.tags,
 	})
 }
 
@@ -43,8 +46,8 @@ func write(b *bytes.Buffer, a []byte) {
 	}
 }
 
-func (kdb *TSKairos) Create(name string, metric string, stamp int64, value float64) {
-	kdb.group = append(kdb.group, TSKairosMeasurement{name: name, metric: metric, stamp: stamp, value: value})
+func (kdb *TSKairos) Create(name string, metric string, stamp int64, value float64, tags map[string]string) {
+	kdb.group = append(kdb.group, TSKairosMeasurement{name, metric, stamp, value, tags})
 }
 
 func (kdb *TSKairos) Add(host string, port int64) {
@@ -70,5 +73,6 @@ func (kdb *TSKairos) Add(host string, port int64) {
 }
 
 func (kdb *TSKairos) Reset() {
-	kdb.group = []TSKairosMeasurement{}
+	kdb.group = make([]TSKairosMeasurement, 0)
+	//kdb.group = []TSKairosMeasurement{}
 }

@@ -1,3 +1,11 @@
+.38 Edit the opentsdb.go file and function structure to fit the approach
+	identified and used by newts and kairosdb in an effort to standardise the 
+	interfaces as far as possible. One of the outcomes is to use a common
+	structure to describe a data point before it is marshalled to the 
+	respective databases.
+.37 Add the opentsdb.go file to the rest package to incorporate the interface
+	to the OpenTSDB database for benchmarking
+
 .36 Update the code in out.go that creates and sends the HTTP request to use
 	the updated HTTP request structures
 .35 Update the kairosdb marshalling to utilise the same methodology as newts.
