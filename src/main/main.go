@@ -8,7 +8,9 @@ import (
 	"time"
 )
 
-var voltage data.TSSet
+func initilaise() {
+
+}
 
 func main() {
 

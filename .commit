@@ -1,3 +1,10 @@
+.36 Update the code in out.go that creates and sends the HTTP request to use
+	the updated HTTP request structures
+.35 Update the kairosdb marshalling to utilise the same methodology as newts.
+	This ensures that movement between database interfaces are seamless
+.34 Add the newts.go file that contains the code that marshalls time series
+	data into the required format for the newts database
+
 .33 To allow for the 'Spools' functionality, the REST property of the output
 	had to be extended to an array, to allow independent formatting of each
 	SpoolStamp and SpoolValue set.

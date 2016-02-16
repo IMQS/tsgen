@@ -2,22 +2,35 @@ package rest
 
 import (
 	"bytes"
-	//"encoding/json"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	//"profile"
 	"strconv"
-	"time"
-
 	//"util"
 )
 
 type TSKairos struct {
-	Json bytes.Buffer
+	group []TSKairosMeasurement
 }
 
-type TSNewts struct {
-	Json bytes.Buffer
+type TSKairosMeasurement struct {
+	name   string
+	metric string
+	stamp  int64
+	value  float64
+}
+
+func (m *TSKairosMeasurement) MarshalJSON() ([]byte, error) {
+	return json.Marshal(&struct {
+		Name      string  `json:"name"`
+		Timestamp int64   `json:"timestamp"`
+		Value     float64 `json:"value"`
+	}{
+		Name:      fmt.Sprintf("%s%s", m.name, m.metric),
+		Timestamp: m.stamp,
+		Value:     m.value,
+	})
 }
 
 func write(b *bytes.Buffer, a []byte) {
@@ -30,80 +43,11 @@ func write(b *bytes.Buffer, a []byte) {
 	}
 }
 
-func (r *TSKairos) Begin() {
-	write(&r.Json, []byte(`[`))
+func (kdb *TSKairos) Create(name string, metric string, stamp int64, value float64) {
+	kdb.group = append(kdb.group, TSKairosMeasurement{name: name, metric: metric, stamp: stamp, value: value})
 }
 
-func (r *TSKairos) Create(name string, stamp int64, value float64) []byte {
-
-	// Clear the buffer
-	//r.Reset()
-
-	write(&r.Json, []byte(`{`))
-
-	write(&r.Json, []byte(strconv.Quote(`name`)))
-	write(&r.Json, []byte(`:`))
-	write(&r.Json, []byte(strconv.Quote(name)))
-	write(&r.Json, []byte(`,`))
-
-	write(&r.Json, []byte(strconv.Quote(`timestamp`)))
-	write(&r.Json, []byte(`:`))
-	write(&r.Json, []byte(strconv.FormatInt(stamp/int64(time.Millisecond), 10)))
-	write(&r.Json, []byte(`,`))
-
-	write(&r.Json, []byte(strconv.Quote(`value`)))
-	write(&r.Json, []byte(`:`))
-	write(&r.Json, []byte(strconv.FormatFloat(value, 'f', -1, 64)))
-
-	write(&r.Json, []byte(`}`))
-
-	return r.Json.Bytes()
-
-}
-
-func (r *TSKairos) Another() {
-	write(&r.Json, []byte(`,`))
-}
-
-func (r *TSKairos) End() {
-	write(&r.Json, []byte(`]`))
-}
-
-func (r *TSKairos) Batch(name string, stamp *[]int64, value *[]float64) []byte {
-
-	// Clear the buffer
-	r.Reset()
-
-	write(&r.Json, []byte(`[{`))
-
-	write(&r.Json, []byte(strconv.Quote(`name`)))
-	write(&r.Json, []byte(`:`))
-	write(&r.Json, []byte(strconv.Quote(name)))
-	write(&r.Json, []byte(`,`))
-
-	write(&r.Json, []byte(strconv.Quote(`datapoints`)))
-	write(&r.Json, []byte(`:`))
-	write(&r.Json, []byte(`[`))
-	for idx := 0; idx < len(*stamp); idx++ {
-		write(&r.Json, []byte(`[`))
-		write(&r.Json, []byte(strconv.FormatInt((*stamp)[idx]/int64(time.Millisecond), 10)))
-		write(&r.Json, []byte(`,`))
-		write(&r.Json, []byte(strconv.FormatFloat((*value)[idx], 'f', -1, 64)))
-		write(&r.Json, []byte(`]`))
-		if idx < (len(*stamp) - 1) {
-			write(&r.Json, []byte(`, `))
-		}
-	}
-	write(&r.Json, []byte(`]`))
-	write(&r.Json, []byte(`}]`))
-
-	fmt.Println(string(r.Json.Bytes()))
-
-	return r.Json.Bytes()
-
-}
-
-func (r *TSKairos) Add(host string, port int64) {
+func (kdb *TSKairos) Add(host string, port int64) {
 	var url string = "http://"
 	var cmd string = "api/v1/datapoints"
 	//var cmd string = "api/put/?details&sync"
@@ -113,29 +57,18 @@ func (r *TSKairos) Add(host string, port int64) {
 	url += "/"
 	url += cmd
 
-	req, _ := http.NewRequest("POST", url, &r.Json)
-	if false {
-		fmt.Println(req)
+	mJson, _ := json.Marshal(kdb.group)
+	fmt.Println(string(mJson))
+	resp, _ := http.Post(url, "application/json", bytes.NewReader(mJson))
+	if resp == nil {
+
+	} else {
+		defer resp.Body.Close()
 	}
 
-	if req != nil {
-
-	}
-
-	fmt.Print("_")
-
-	/*
-		client := &http.Client{}
-		resp, err := client.Do(req)
-		if err != nil {
-			//	panic(err)
-		}
-		if resp != nil {
-			defer resp.Body.Close()
-		}
-	*/
+	kdb.Reset()
 }
 
-func (r *TSKairos) Reset() {
-	r.Json.Reset()
+func (kdb *TSKairos) Reset() {
+	kdb.group = []TSKairosMeasurement{}
 }
