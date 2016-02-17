@@ -1,78 +1,10 @@
 {"Property" : 
 	[
 		{
-			"Name": "compound",
-			"Format" : "CSV",
-			"Mode" : "STORE",
-			"Batch" : 131072,
-
-			"Start" : "2016-02-01T14:00:00+02:00",
-			"Now" : true,
-			"Seed": 3369,
-			"Samples": 10000,
-			"Duration" : 1,
-			"Bias" : [12, 0, 0, 0, 0],
-			"Type" : ["SIN", "SIN", "SIN","SIN", "SIN"],
-
-			"Freq": [50,2500, 5000, 15000, 20000, 50000],
-			"Amp" : [0.3, 0.1, 0.1, 0.1, 0.05, 0.05]
-		},
-		{
-			"Name": "sin",
-			"Format" : "CSV",
-			"Mode" : "STORE",
-			"Batch" : 262144,
-
-			"Start" : "2016-02-01T14:00:00+02:00",
-			"Now" : true,
-			"Seed": 3369,
-			"Samples": 10000,
-			"Duration" : 1,
-			"Bias" : [12],
-			"Type" : ["SIN"],
-
-			"Freq": [2],
-			"Amp" : [0.3]
-		},
-		{
-			"Name": "cos",
-			"Format" : "CSV",
-			"Mode" : "STORE",
-			"Batch" : 131072,
-
-			"Start" : "2016-02-01T14:00:00+02:00",
-			"Now" : true,
-			"Seed": 3369,
-			"Samples": 10000,
-			"Duration" : 1,
-			"Bias" : [12],
-			"Type" : ["COS"],
-
-			"Freq": [2],
-			"Amp" : [0.3]
-		},
-		{
-			"Name": "random",
-			"Format" : "CSV",
-			"Mode" : "STORE",
-			"Batch" : 131072,
-
-			"Start" : "2016-02-01T14:00:00+02:00",
-			"Now" : true,
-			"Seed": 3369,
-			"Samples": 10000,
-			"Duration" : 1,
-			"Bias" : [12],
-			"Type" : ["RANDOM"],
-
-			"Freq": [2],
-			"Amp" : [0.3]
-		},
-		{
-			"Name": "alarmgen",
+			"Name": "instance29_site",
 			"Format" : "HTTP",
-			"Host" : "192.168.4.194",
-			"Port" : 4242,
+			"Host" : "phoenixdb",
+			"Port" : 8080,
 			"Mode" : "LOAD",
 			"Batch" : 50,
 			"Sites" : 50000,
@@ -82,36 +14,9 @@
 			"Start" : "2016-02-01T14:00:00+02:00",
 			"Now" : true,
 			"Seed": 3369,
-			"Samples": 200,
-			"Duration" : 72,
-			"Bias" : [12],
-			"Type" : ["LOGIC"],
-
-			"Freq" : [10],
-			"Amp" : [2],
-
-			"Toggles" : [148],
-			"State"	: "LOW",
-			"High" : 5,
-			"Low" : 0
-
-		},		
-		{
-			"Name": "alarmbatt",
-			"Format" : "HTTP",
-			"Host" : "192.168.4.194",
-			"Port" : 4242,
-			"Mode" : "LOAD",
-			"Batch" : 50,
-			"Sites" : 1,
-			"Distribute" : true,
-			"Spools" : 8,
-
-			"Start" : "2016-02-01T14:00:00+02:00",
-			"Now" : true,
-			"Seed": 3369,
-			"Samples": 200,
-			"Duration" : 10,
+			"Samples": 1000000,
+			"Span" : 60,
+			"Duration" : 86400,
 			"Bias" : [12],
 			"Type" : ["LOGIC"],
 
@@ -124,5 +29,6 @@
 			"Low" : 0
 
 		}	
+
 	]
 }

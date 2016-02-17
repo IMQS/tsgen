@@ -76,6 +76,13 @@ func EventSpreadInterval(config *config.TSProperties, e chan TSEvent) {
 	Events = util.QSortU64(Events)
 	for idx = 0; idx < config.Samples; idx++ {
 		reach := float64(baseSpread.Int63()) / float64(math.MaxInt64)
+
+		if reach < 0.1 {
+			reach = 0.1
+		}
+		if reach > 0.9 {
+			reach = 0.9
+		}
 		Tn := float64((float64(idx) * interval) + (interval * reach))
 
 		// Create event at this point in the time series, with default values

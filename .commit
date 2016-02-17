@@ -1,3 +1,8 @@
+.40 Current status of code been used to interface to Newts, KairosDB and 
+	OpenTSDB.
+.39 Som eminor updates to allow seamless switching between the different 
+	database interfaces 
+
 .38 Edit the opentsdb.go file and function structure to fit the approach
 	identified and used by newts and kairosdb in an effort to standardise the 
 	interfaces as far as possible. One of the outcomes is to use a common

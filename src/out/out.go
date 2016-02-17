@@ -3,7 +3,7 @@ package out
 import (
 	"encoding/csv"
 	"fmt"
-	//"math"
+	"math"
 	"math/rand"
 	"os"
 	"profile"
@@ -38,8 +38,8 @@ type TSDestination struct {
 
 	Sites      uint64
 	Distribute bool
-	Spools     int64          // Fully describes the spools
-	REST       []rest.TSNewts // Structure that describes the REST output in full
+	Spools     int64           // Fully describes the spools
+	REST       []rest.TSKairos // Structure that describes the REST output in full
 	Job        int64
 	Jobs       chan int64 // Manages jobs for spooling
 	Done       chan int64 // Manages jobs for spooling
@@ -86,7 +86,7 @@ func (dst *TSDestination) Init() {
 		// Close the file so that it may be opened in a different mode
 		disk.Close()
 	case HTTP:
-		dst.REST = make([]rest.TSNewts, dst.Spools)
+		dst.REST = make([]rest.TSKairos, dst.Spools)
 		dst.SpoolStamp = make([][]int64, dst.Spools)
 		dst.SpoolValue = make([][]float64, dst.Spools)
 		dst.Job = 0
@@ -121,7 +121,7 @@ func (dst *TSDestination) Spool(id int64) {
 		dst.Format(id)
 		// Data already formatted to content, use REST API
 		dst.REST[id].Add(dst.Host, dst.Port)
-		fmt.Print("#", dst.Job, id)
+		//fmt.Print("#", dst.Job, id)
 		dst.Job++
 	}
 	fmt.Print("@", id)
@@ -164,14 +164,20 @@ func (dst *TSDestination) Format(id int64) {
 			copy(dst.SpoolStamp[id], dst.Stamp)
 			copy(dst.SpoolValue[id], dst.Value)
 			dst.REST[id].Init()
-			//var metric string
+			var metric string
 			for idxSeries := 0; idxSeries < len(dst.SpoolStamp[id]); idxSeries++ {
 				if dst.Distribute {
-					//val := int64((float64(dst.srcSite.Int63()) / float64(math.MaxInt64)) * float64(dst.Sites))
-					//metric = strconv.FormatInt(val, 10)
+					val := int64((float64(dst.srcSite.Int63()) / float64(math.MaxInt64)) * float64(dst.Sites))
+					metric = strconv.FormatInt(val, 10)
 				}
-				//dst.REST[id].Create(dst.Name, metric, dst.SpoolStamp[id][idxSeries], dst.SpoolValue[id][idxSeries])
-				dst.REST[id].Create(int(id), dst.Name, dst.SpoolStamp[id][idxSeries], dst.SpoolValue[id][idxSeries])
+				// Kairos DB
+				tags := map[string]string{"site": "north", "alarm": "none"}
+				dst.REST[id].Create(dst.Name, metric, dst.SpoolStamp[id][idxSeries], dst.SpoolValue[id][idxSeries], tags)
+				// NewTS DB
+				//dst.REST[id].Create(int(id), dst.Name, metric, dst.SpoolStamp[id][idxSeries], dst.SpoolValue[id][idxSeries])
+				// OpenTS DB
+				//tags := map[string]string{"site": "north", "alarm": "none"}
+				//dst.REST[id].Create(dst.Name, metric, dst.SpoolStamp[id][idxSeries], dst.SpoolValue[id][idxSeries], tags)
 			}
 			//fmt.Println(string(dst.REST[id].Json.Bytes()))
 		default:

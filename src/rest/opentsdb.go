@@ -7,6 +7,8 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"strconv"
+	"time"
 )
 
 type TSOpen struct {
@@ -28,7 +30,7 @@ func (m *Datum) MarshalJSON() ([]byte, error) {
 		Tags      map[string]string `json:"tags"`
 	}{
 		Metric:    fmt.Sprintf("%s", m.Metric),
-		Timestamp: m.Timestamp,
+		Timestamp: m.Timestamp / int64(time.Millisecond),
 		Value:     m.Value,
 		Tags:      m.Tags,
 	})
@@ -38,8 +40,60 @@ func Append(d *[]Datum, metric string, timestamp int64, value float64, tags map[
 	*d = append(*d, Datum{metric, timestamp, value, tags})
 }
 
-func (open *TSOpen) Create(name string, stamp int64, value float64, tags map[string]string) {
+func (open *TSOpen) Init() {
+
+}
+
+func (open *TSOpen) Create(name string, metric string, stamp int64, value float64, tags map[string]string) {
 	open.group = append(open.group, Datum{name, stamp, value, tags})
+}
+
+func (open *TSOpen) Add(host string, port int64) {
+	var url string = "http://"
+	var cmd string = "api/put/?details&sync"
+
+	url += host
+	url += ":"
+	url += strconv.FormatInt(port, 10)
+	url += "/"
+	url += cmd
+
+	mJson, err := json.Marshal(open.group)
+	if err != nil {
+		fmt.Printf("Parsing data to JSON failed: %s", err)
+	}
+	//fmt.Println(string(mJson))
+
+	resp, err := http.Post(url, "application/json", bytes.NewReader(mJson))
+	if err != nil {
+		fmt.Printf("HTTP Post request failed: %s", err)
+		os.Exit(1)
+	}
+	if resp == nil {
+
+	} else {
+		contents, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			fmt.Printf("%s", err)
+			fmt.Printf("%s\n", string(contents))
+			os.Exit(1)
+		}
+
+		if resp.StatusCode != 200 {
+			fmt.Println()
+			fmt.Println("Response code: ", resp.StatusCode) //Uh-oh this means our test failed
+			fmt.Println()
+			os.Exit(1)
+		}
+
+		defer resp.Body.Close()
+	}
+
+	open.Reset()
+}
+
+func (open *TSOpen) Reset() {
+	open.group = []Datum{}
 }
 
 func Put(d *[]Datum) {

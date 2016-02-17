@@ -188,7 +188,7 @@ func (set *TSSet) Create() {
 		for j = 0; j < jobs; j++ {
 			<-set.Output.Jobs
 		}
-		fmt.Println("Jobs:", set.Output.Job)
+
 	default:
 	}
 
@@ -200,6 +200,7 @@ func (set *TSSet) Create() {
 	fmt.Println(set.Output.Path)
 	fmt.Println(set.Profile.Execute.Telapsed.Seconds(), "s")
 
+	fmt.Println("Jobs:", set.Output.Job)
 	set.Done <- true
 }
 

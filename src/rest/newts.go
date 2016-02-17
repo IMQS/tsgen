@@ -2,10 +2,12 @@ package rest
 
 import "fmt"
 import "time"
+import "io/ioutil"
 import "math/rand"
 import "encoding/json"
 import "net/http"
 import "bytes"
+import "os"
 import "strconv"
 
 var r *rand.Rand
@@ -13,7 +15,7 @@ var r *rand.Rand
 const seed int64 = 99
 const nrJobs = 2000
 const nrWorkers = 8
-const nrSitesPerWorker = 6000
+const nrSitesPerWorker = 6250
 
 type TSNewts struct {
 	mSlice []Measurement
@@ -40,7 +42,7 @@ func (m *Measurement) MarshalJSON() ([]byte, error) {
 		Type      string        `json:"type"`
 		Value     float64       `json:"value"`
 	}{
-		Timestamp: m.t,
+		Timestamp: m.t / int64(time.Millisecond),
 		Resource:  NewtsResource{ID: "localhost:chassis:temps"},
 		Name:      fmt.Sprintf("Sensor %v-%v", m.siteID, m.mType),
 		Type:      "GAUGE",
@@ -56,8 +58,10 @@ func genMeasurement(workerID int) Measurement {
 	return Measurement{int32(workerID)*int32(nrSitesPerWorker) + r.Int31n(nrSitesPerWorker), r.Int31n(100), time.Now().Unix(), r.Float64() * 100}
 }
 
-func (newts *TSNewts) Create(id int, name string, stamp int64, value float64) {
-	newts.mSlice = append(newts.mSlice, genMeasurement(id))
+func (newts *TSNewts) Create(id int, name string, metric string, stamp int64, value float64) {
+	newts.mSlice = append(newts.mSlice, Measurement{int32(id)*int32(nrSitesPerWorker) + r.Int31n(nrSitesPerWorker), r.Int31n(100), stamp, value})
+	// Single site
+	//newts.mSlice = append(newts.mSlice, Measurement{3, 0, stamp / int64(time.Millisecond), value})
 }
 
 func (newts *TSNewts) Add(host string, port int64) {
@@ -71,11 +75,26 @@ func (newts *TSNewts) Add(host string, port int64) {
 	url += cmd
 
 	mJson, _ := json.Marshal(newts.mSlice)
-	fmt.Println(string(mJson))
+	//fmt.Println(string(mJson))
+
 	resp, _ := http.Post(url, "application/json", bytes.NewReader(mJson))
 	if resp == nil {
-
+		fmt.Print("No response")
 	} else {
+		contents, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			fmt.Printf("%s", err)
+			fmt.Printf("%s\n", string(contents))
+			os.Exit(1)
+		}
+
+		if resp.StatusCode != 201 {
+			fmt.Println()
+			fmt.Println("Response code: ", resp.StatusCode) //Uh-oh this means our test failed
+			fmt.Println()
+			os.Exit(1)
+		}
+
 		defer resp.Body.Close()
 	}
 
