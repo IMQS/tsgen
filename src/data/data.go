@@ -51,24 +51,19 @@ func degrees(rad float64) float64 {
 func (set *TSSet) init() {
 	// Start moment measurement
 	set.Profile.Execute.Start(0)
+
 	set.State = set.Property.State
+	set.Output.Property = &set.Property
 
-	set.Output.Type = out.EFormatType(set.Property.Format)
-	set.Output.Path = set.Property.Name + "." + set.Property.Format
-	set.Output.Name = set.Property.Name
-	set.Output.Host = set.Property.Host
-	set.Output.Port = set.Property.Port
-	set.Output.Sites = set.Property.Sites
-	set.Output.Distribute = set.Property.Distribute
-	set.Output.Spools = set.Property.Spools
+	set.Output.Path = set.Property.Name + "." + string(set.Property.Form)
 
-	set.srcBase = rand.NewSource(set.Property.Seed)
-	set.srcSign = rand.NewSource(math.MaxInt64 - set.Property.Seed)
+	set.srcBase = rand.NewSource(set.Property.SeedY)
+	set.srcSign = rand.NewSource(math.MaxInt64 - set.Property.SeedY)
 
 	// Initialise the destination
 	set.Output.Init()
 	if set.Property.Verbose {
-		fmt.Println(set.Output.Type)
+		fmt.Println(set.Output.Property.Form)
 	}
 
 	// Initialise the data set buffer indices
@@ -123,7 +118,7 @@ func (set *TSSet) Create() {
 
 			switch set.Property.Mode {
 			case config.REAL:
-				switch set.Property.Format {
+				switch set.Property.Form {
 				case "HTTP":
 					var to chan bool
 					set.Output.Wait((v.Td*1.0)*set.Property.Duration, to)
@@ -144,12 +139,12 @@ func (set *TSSet) Create() {
 		 *		Set Type is the type of data (transformation applied) in the set
 		 *     	Destination type is the format of the output
 		 */
-		switch set.Output.Type {
-		case out.CSV:
+		switch set.Output.Property.Form {
+		case config.CSV:
 			if set.Property.Batch <= 0 {
 				set.Property.Batch = pageCSV
 			}
-		case out.HTTP:
+		case config.HTTP:
 			if set.Property.Batch <= 0 {
 				set.Property.Batch = pageHTTP
 			}
@@ -169,9 +164,9 @@ func (set *TSSet) Create() {
 	 */
 	set.Process()
 
-	switch set.Output.Type {
-	case out.CSV:
-	case out.HTTP:
+	switch set.Output.Property.Form {
+	case config.CSV:
+	case config.HTTP:
 		// No more jobs, all samples have been processed
 		close(set.Output.Jobs)
 
@@ -184,7 +179,7 @@ func (set *TSSet) Create() {
 
 		var j uint64
 		var jobs uint64
-		jobs = set.Property.Samples/set.Property.Batch + 1
+		jobs = (set.Property.Samples / set.Property.Batch) + 1
 		// Wait on all Jobs to complete
 		for j = 0; j < jobs; j++ {
 			<-set.Output.Jobs

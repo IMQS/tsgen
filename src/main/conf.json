@@ -1,9 +1,10 @@
 {"Property" : 
 	[
 		{
-			"Name": "phoenixrun12_site",
-			"Format" : "HTTP",
-			"Host" : "phoenixdb",
+			"DBase" : "OPEN",
+			"Name": "grafdata10_",
+			"Form" : "HTTP",
+			"Host" : "192.168.4.209",
 			"Port" : 4250,
 			"Mode" : "LOAD",
 			"Batch" : 50,
@@ -11,22 +12,20 @@
 			"Distribute" : true,
 			"Spools" : 8,
 
-			"Start" : "2016-02-01T14:00:00+02:00",
-			"Now" : true,
-			"Seed": 3369,
-			"Samples": 1000000,
-			"Duration" : 86400,
+			"Start" : "2016-02-18T00:00:00+02:00",
+			"SeedX": 4521,
+			"Samples": 100000,
+			"Duration" : 3600,
 			"Bias" : [12],
-			"Type" : ["LOGIC"],
+			"Type" : ["SIN"],
 
-			"Freq" : [10],
+			"Freq" : [1],
 			"Amp" : [2],
 
-			"Toggles" : [148],
+			"Toggles" : [562],
 			"State"	: "LOW",
-			"High" : 5,
+			"High" : 3.3,
 			"Low" : 0
-
 		}	
 
 	]

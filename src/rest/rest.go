@@ -5,37 +5,95 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
 	"os"
 	"strconv"
 	"time"
-	//"util"
 )
 
-type TSKairos struct {
-	group []TSKairosMeasurement
-}
+type EDBaseType string
 
-type TSKairosMeasurement struct {
-	name   string
+const (
+	KAIROS EDBaseType = "KAIROS"
+	OPEN   EDBaseType = "OPEN"
+	NEW    EDBaseType = "NEW"
+)
+
+type TSDataPoint struct {
+	dbase  EDBaseType
 	metric string
+	site   string
+	dptype int64
 	stamp  int64
 	value  float64
 	tags   map[string]string
 }
 
-func (m *TSKairosMeasurement) MarshalJSON() ([]byte, error) {
-	return json.Marshal(&struct {
-		Name      string            `json:"name"`
-		Timestamp int64             `json:"timestamp"`
-		Value     float64           `json:"value"`
-		Tags      map[string]string `json:"tags"`
-	}{
-		Name:      fmt.Sprintf("%s%s", m.name, m.metric),
-		Timestamp: m.stamp / int64(time.Millisecond),
-		Value:     m.value,
-		Tags:      m.tags,
-	})
+type TSDBase struct {
+	batch []TSDataPoint
+
+	DBase     EDBaseType
+	Id        int64
+	Site      string
+	IdxSeries int
+	Tags      map[string]string
+	Val       int64
+
+	Seed    int64
+	SrcSite rand.Source
+}
+
+type TSResource struct {
+	Id   string            `json:"id"`
+	attr map[string]string `json:"attributes"`
+}
+
+func (dp *TSDataPoint) MarshalJSON() ([]byte, error) {
+
+	switch dp.dbase {
+	case KAIROS:
+		return json.Marshal(&struct {
+			Name      string            `json:"name"`
+			Timestamp int64             `json:"timestamp"`
+			Value     float64           `json:"value"`
+			Tags      map[string]string `json:"tags"`
+		}{
+			Name:      fmt.Sprintf("%s%s", dp.metric, dp.site),
+			Timestamp: dp.stamp / int64(time.Millisecond),
+			Value:     dp.value,
+			Tags:      dp.tags,
+		})
+	case OPEN:
+		return json.Marshal(&struct {
+			Metric    string            `json:"metric"`
+			Timestamp int64             `json:"timestamp"`
+			Value     float64           `json:"value"`
+			Tags      map[string]string `json:"tags"`
+		}{
+			Metric:    fmt.Sprintf("%s%s", dp.metric, dp.site),
+			Timestamp: dp.stamp / int64(time.Millisecond),
+			Value:     dp.value,
+			Tags:      dp.tags,
+		})
+	case NEW:
+		return json.Marshal(&struct {
+			Timestamp int64      `json:"timestamp"`
+			Resource  TSResource `json:"resource"`
+			Name      string     `json:"name"`
+			Type      string     `json:"type"`
+			Value     float64    `json:"value"`
+		}{
+			Timestamp: dp.stamp / int64(time.Millisecond),
+			Resource:  TSResource{Id: "localhost:chassis:temps", attr: dp.tags},
+			Name:      fmt.Sprintf("%s%v-%v", dp.metric, dp.site),
+			Type:      "GAUGE",
+			Value:     dp.value,
+		})
+	default:
+		return make([]byte, 0), nil
+	}
+
 }
 
 func write(b *bytes.Buffer, a []byte) {
@@ -48,33 +106,17 @@ func write(b *bytes.Buffer, a []byte) {
 	}
 }
 
-func (kdb *TSKairos) Init() {
-
+func (db *TSDBase) Init(id int64) {
+	db.Id = id
+	db.Seed = 100
+	db.SrcSite = rand.NewSource(db.Seed)
 }
 
-func (kdb *TSKairos) Create(name string, metric string, stamp int64, value float64, tags map[string]string) {
-	kdb.group = append(kdb.group, TSKairosMeasurement{name, metric, stamp, value, tags})
+func (db *TSDBase) Create(metric string, site string, stamp int64, value float64, tags map[string]string) {
+	db.batch = append(db.batch, TSDataPoint{db.DBase, metric, site, 0, stamp, value, tags})
 }
 
-func (kdb *TSKairos) Add(host string, port int64) {
-	var url string = "http://"
-	var cmd string = "api/v1/datapoints"
-
-	url += host
-	url += ":"
-	url += strconv.FormatInt(port, 10)
-	url += "/"
-	url += cmd
-
-	mJson, _ := json.Marshal(kdb.group)
-	//fmt.Println(string(mJson))
-
-	if mJson != nil {
-
-	}
-
-	resp, _ := http.Post(url, "application/json", bytes.NewReader(mJson))
-
+func (db *TSDBase) Response(resp *http.Response, code int) {
 	if resp == nil {
 		fmt.Print("No response")
 		os.Exit(1)
@@ -86,7 +128,7 @@ func (kdb *TSKairos) Add(host string, port int64) {
 			os.Exit(1)
 		}
 
-		if resp.StatusCode != 204 {
+		if resp.StatusCode != code {
 			fmt.Println()
 			fmt.Println("Response code: ", resp.StatusCode) //Uh-oh this means our test failed
 			fmt.Println()
@@ -95,12 +137,50 @@ func (kdb *TSKairos) Add(host string, port int64) {
 
 		defer resp.Body.Close()
 	}
+}
 
-	kdb.Reset()
+func (db *TSDBase) Add(host string, port int64) {
+	var url string = "http://"
+	var cmd string
+	switch db.DBase {
+	case KAIROS:
+		cmd = "api/v1/datapoints"
+	case NEW:
+		cmd = "samples"
+	case OPEN:
+		cmd = "api/put/?details"
+	default:
+
+	}
+
+	url += host
+	url += ":"
+	url += strconv.FormatInt(port, 10)
+	url += "/"
+	url += cmd
+
+	mJson, _ := json.Marshal(db.batch)
+	//fmt.Println(string(mJson))
+
+	if mJson != nil {
+
+	}
+
+	resp, _ := http.Post(url, "application/json", bytes.NewReader(mJson))
+
+	switch db.DBase {
+	case KAIROS:
+		db.Response(resp, 204)
+	case NEW:
+		db.Response(resp, 201)
+	case OPEN:
+		db.Response(resp, 200)
+	default:
+	}
+	db.Reset()
 
 }
 
-func (kdb *TSKairos) Reset() {
-	kdb.group = make([]TSKairosMeasurement, 0)
-	//kdb.group = []TSKairosMeasurement{}
+func (db *TSDBase) Reset() {
+	db.batch = make([]TSDataPoint, 0)
 }

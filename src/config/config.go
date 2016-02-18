@@ -4,8 +4,21 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"rest"
 	"time"
 )
+
+// Enumeration like declaration of output format types
+type EFormatType string
+
+const (
+	CSV  EFormatType = "CSV"
+	HTTP EFormatType = "HTTP"
+)
+
+func (format *EFormatType) String() string {
+	return format.String()
+}
 
 type EMode string
 
@@ -40,20 +53,21 @@ type TSConfig struct {
 
 type TSProperties struct {
 	// Set/File
-	Name       string // Identifier string for time series data
-	Format     string // Output file format
-	Host       string // Host name in IP address format
-	Port       int64  // Port number
-	Mode       EMode  // Time based or load
-	Batch      uint64 // Number of samples to batch for an HTTP post
-	Sites      uint64 // Number of sites to simulate data for
-	Distribute bool   // Distribute points between Sites at random
-	Spools     int64  // Number of pools to sping up
+	DBase      rest.EDBaseType
+	Name       string      // Identifier string for time series data
+	Form       EFormatType // Output format
+	Host       string      // Host name in IP address format
+	Port       int64       // Port number
+	Mode       EMode       // Time based or load
+	Batch      uint64      // Number of samples to batch for an HTTP post
+	Sites      uint64      // Number of sites to simulate data for
+	Distribute bool        // Distribute points between Sites at random
+	Spools     int64       // Number of pools to sping up
 
 	// Content
 	Start    time.Time // specified in year, month etc
 	Now      bool      // When true overrides the Start time with Now()
-	Seed     int64     // unitless
+	SeedX    int64     // unitless
 	Samples  uint64    // unitless
 	Duration float64   // seconds
 	Type     []ESignal // data type
@@ -69,6 +83,8 @@ type TSProperties struct {
 	State   EState   // Start state for logic
 	High    float64  // Factor to scale the logic HIGH signal level
 	Low     float64  // Factor to scale the logic LOW signal level
+
+	SeedY int64 // Seed used to generate the RANDOM type data set
 
 	// Clock
 	Duty float64 // Duty cycle of the clock signal

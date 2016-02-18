@@ -1,10 +1,10 @@
 package out
 
 import (
+	"config"
 	"encoding/csv"
 	"fmt"
 	"math"
-	"math/rand"
 	"os"
 	"profile"
 	"rest"
@@ -17,38 +17,20 @@ const (
 	csvContent int = 0
 )
 
-// Enumeration like declaration of output format types
-type EFormatType string
-
-const (
-	CSV  EFormatType = "CSV"
-	HTTP EFormatType = "HTTP"
-)
-
-func (format *EFormatType) String() string {
-	return format.String()
-}
-
 // Structure completely defines data destination
 type TSDestination struct {
-	Type EFormatType // Type of output that is addressed in this instance
-	Path string      // Usually a file path when writing to disk
-	Name string      // The text identifier of the data set
-	Host string      // IP address in the formet 192.168.4.194
-	Port int64       // Port on which REST API communicates
+	Property *config.TSProperties // Set of properties that fully describe set
 
-	Sites      uint64
-	Distribute bool
-	Spools     int64         // Fully describes the spools
-	REST       []rest.TSOpen // Structure that describes the REST output in full
-	Job        uint64
-	Jobs       chan uint64 // Manages jobs for spooling
-	Done       chan int64  // Manages jobs for spooling
+	//Type config.EFormatType // Type of output that is addressed in this instance
+	Path string // Usually a file path when writing to disk
+
+	REST []rest.TSDBase // Structure that describes the REST output in full
+
+	Job  uint64
+	Jobs chan uint64 // Manages jobs for spooling
+	Done chan int64  // Manages jobs for spooling
 
 	Verbose bool // enable or disable verbose display during create
-
-	Seed    int64
-	srcSite rand.Source
 
 	// CSV
 	Hdr     []string // Coloumn headers for CSV output type
@@ -62,10 +44,8 @@ type TSDestination struct {
 }
 
 func (dst *TSDestination) Init() {
-	dst.Seed = 100
-	dst.srcSite = rand.NewSource(dst.Seed)
-	switch dst.Type {
-	case CSV:
+	switch dst.Property.Form {
+	case config.CSV:
 		dst.Hdr = make([]string, 0)
 		var b byte
 		for _, b = range []byte("Time") {
@@ -86,16 +66,17 @@ func (dst *TSDestination) Init() {
 		}
 		// Close the file so that it may be opened in a different mode
 		disk.Close()
-	case HTTP:
-		dst.REST = make([]rest.TSOpen, dst.Spools)
-		dst.SpoolStamp = make([][]int64, dst.Spools)
-		dst.SpoolValue = make([][]float64, dst.Spools)
+	case config.HTTP:
+		dst.REST = make([]rest.TSDBase, dst.Property.Spools)
+		dst.SpoolStamp = make([][]int64, dst.Property.Spools)
+		dst.SpoolValue = make([][]float64, dst.Property.Spools)
 		dst.Job = 0
 		dst.Jobs = make(chan uint64)
-		dst.Done = make(chan int64, dst.Spools)
-		var s int64
-		for s = 0; s < dst.Spools; s++ {
-			go dst.Spool(s)
+		dst.Done = make(chan int64, dst.Property.Spools)
+		var id int64
+		for id = 0; id < dst.Property.Spools; id++ {
+			dst.REST[id].DBase = dst.Property.DBase
+			go dst.Spool(id)
 		}
 
 	default:
@@ -110,7 +91,7 @@ func (dst *TSDestination) Dump() {
 		fmt.Println("dst.Dump")
 	}
 
-	if dst.Type == CSV {
+	if dst.Property.Form == config.CSV {
 		dst.Format(0)
 	}
 	dst.Out()
@@ -121,7 +102,7 @@ func (dst *TSDestination) Spool(id int64) {
 	for _ = range dst.Jobs {
 		dst.Format(id)
 		// Data already formatted to content, use REST API
-		dst.REST[id].Add(dst.Host, dst.Port)
+		dst.REST[id].Add(dst.Property.Host, dst.Property.Port)
 		//fmt.Print("#", dst.Job, id)
 		atomic.AddUint64(&dst.Job, 1)
 	}
@@ -142,8 +123,8 @@ func (dst *TSDestination) Format(id int64) {
 		 * and can not be sent to any form of output.
 		 */
 	} else {
-		switch dst.Type {
-		case CSV:
+		switch dst.Property.Form {
+		case config.CSV:
 			for idx, v := range dst.Stamp {
 				dst.Content = strconv.AppendInt(dst.Content, v, 10)
 				dst.Content = append(dst.Content, 44) // comma
@@ -151,7 +132,7 @@ func (dst *TSDestination) Format(id int64) {
 				dst.Content = append(dst.Content, 13) //CR
 				dst.Content = append(dst.Content, 10) //LF
 			}
-		case HTTP:
+		case config.HTTP:
 			/**
 			 * REST does not utilise the Content array, it stores its
 			 * commands internally
@@ -164,19 +145,18 @@ func (dst *TSDestination) Format(id int64) {
 			dst.SpoolValue[id] = make([]float64, len(dst.Value))
 			copy(dst.SpoolStamp[id], dst.Stamp)
 			copy(dst.SpoolValue[id], dst.Value)
-			dst.REST[id].Init()
-			var metric string
-			for idxSeries := 0; idxSeries < len(dst.SpoolStamp[id]); idxSeries++ {
-				if dst.Distribute {
-					val := int64((float64(dst.srcSite.Int63()) / float64(math.MaxInt64)) * float64(dst.Sites))
-					metric = strconv.FormatInt(val, 10)
+			dst.REST[id].Init(id)
+
+			for dst.REST[id].IdxSeries = 0; dst.REST[id].IdxSeries < len(dst.SpoolStamp[id]); dst.REST[id].IdxSeries++ {
+				if dst.Property.Distribute {
+					dst.REST[id].Val = int64((float64(dst.REST[id].SrcSite.Int63()) / float64(math.MaxInt64)) * float64(dst.Property.Sites))
+					dst.REST[id].Site = strconv.FormatInt(dst.REST[id].Val, 10)
 				}
+				dst.REST[id].Tags = map[string]string{"site": "north", "alarm": "none"}
 				// Kairos DB & OpenTS DB
-				tags := map[string]string{"site": "north", "alarm": "none"}
-				dst.REST[id].Create(dst.Name, metric, dst.SpoolStamp[id][idxSeries], dst.SpoolValue[id][idxSeries], tags)
+				dst.REST[id].Create(dst.Property.Name, dst.REST[id].Site, dst.SpoolStamp[id][dst.REST[id].IdxSeries], dst.SpoolValue[id][dst.REST[id].IdxSeries], dst.REST[id].Tags)
 				// NewTS DB
-				//tags := map[string]string{"site": "north", "alarm": "none"}
-				//dst.REST[id].Create(int(id), dst.Name, metric, dst.SpoolStamp[id][idxSeries], dst.SpoolValue[id][idxSeries], tags)
+				//dst.REST[id].Create(dst.Name, dst.REST[id].Metric, dst.SpoolStamp[id][dst.REST[id].IdxSeries], dst.SpoolValue[id][dst.REST[id].IdxSeries], dst.REST[id].Tags)
 			}
 			//fmt.Println(string(dst.REST[id].Json.Bytes()))
 		default:
@@ -189,15 +169,15 @@ func (dst *TSDestination) Out() {
 		fmt.Println("dst.Write")
 	}
 
-	switch dst.Type {
-	case CSV:
+	switch dst.Property.Form {
+	case config.CSV:
 		disk := dst.Open()
 		defer dst.Close(disk)
 
 		// Data already formatted to content, write to disk
 		disk.Write(dst.Content)
 		dst.Flush()
-	case HTTP:
+	case config.HTTP:
 		// Add a job for the first available spool to process
 		dst.Jobs <- dst.Job
 	default:
@@ -243,12 +223,12 @@ func (dst *TSDestination) Close(disk *os.File) {
 
 func (dst *TSDestination) Flush() {
 	// Flush the content of the output block and reset the buffers
-	switch dst.Type {
-	case CSV:
+	switch dst.Property.Form {
+	case config.CSV:
 		dst.Content = make([]byte, 0)
 		dst.Stamp = make([]int64, 0)
 		dst.Value = make([]float64, 0)
-	case HTTP:
+	case config.HTTP:
 	default:
 
 	}

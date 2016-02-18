@@ -21,6 +21,12 @@ const nrSitesPerWorker = 6250
 
 type TSNewts struct {
 	mSlice []Measurement
+
+	Id        int64
+	Metric    string
+	IdxSeries int
+	Tags      map[string]string
+	Val       int64
 }
 
 type Measurement struct {
@@ -54,12 +60,13 @@ func (m *Measurement) MarshalJSON() ([]byte, error) {
 	})
 }
 
-func (newts *TSNewts) Init() {
+func (newts *TSNewts) Init(id int64) {
+	newts.Id = id
 	r = rand.New(rand.NewSource(seed))
 }
 
-func (newts *TSNewts) Create(id int, name string, metric string, stamp int64, value float64, tags map[string]string) {
-	//newts.mSlice = append(newts.mSlice, Measurement{int32(id)*int32(nrSitesPerWorker) + r.Int31n(nrSitesPerWorker), r.Int31n(100), stamp, value, tags})
+func (newts *TSNewts) Create(name string, metric string, stamp int64, value float64, tags map[string]string) {
+	//newts.mSlice = append(newts.mSlice, Measurement{int32(newts.Id)*int32(nrSitesPerWorker) + r.Int31n(nrSitesPerWorker), r.Int31n(100), stamp, value, tags})
 	// Single site
 	newts.mSlice = append(newts.mSlice, Measurement{5, 5, stamp / int64(time.Millisecond), value, tags})
 }

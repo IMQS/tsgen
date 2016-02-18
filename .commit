@@ -1,3 +1,19 @@
+.48 No need to update code to perform benchmarks to different data base
+	types that are currently supported as compile time.
+.47 Implement the Format function in out.go to be more resiliant
+	against possible data infringements in the concurrent architecture
+	for the workers or Spools on the HTTP output.  TODO:  There remains
+	some effort to ensure that the data for each process is completely 
+	isolatd from the next process.  Data still seem to be lost when 
+	written to the same metric from more than a single Spool.
+.46 Rename the Format config item to Form throughout
+.45 Update the TSDestination structure to contain a pointer to the 
+	TSProperties structure that is parsed from config.JSON instead of duplicating each field that is required in both structures
+.44	Kairos and OpenTS data timeseries databases now use the same code 
+	base with the marshalling interfaces being the only real difference
+.43 Rewrite REST api section to enable the use of the same data point
+	structures. 
+
 .42  Update openTSDB to handle multiple sites
 
 .41 Current configuration for opentsdb benchmarking.  Going to commit with 
