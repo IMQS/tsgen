@@ -50,7 +50,7 @@ func (open *TSOpen) Create(name string, metric string, stamp int64, value float6
 
 func (open *TSOpen) Add(host string, port int64) {
 	var url string = "http://"
-	var cmd string = "api/put/?details&sync"
+	var cmd string = "api/put/?details"
 
 	url += host
 	url += ":"

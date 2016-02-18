@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"out"
 	"profile"
+	"sync/atomic"
 )
 
 // Package constant
@@ -200,7 +201,7 @@ func (set *TSSet) Create() {
 	fmt.Println(set.Output.Path)
 	fmt.Println(set.Profile.Execute.Telapsed.Seconds(), "s")
 
-	fmt.Println("Jobs:", set.Output.Job)
+	fmt.Println("Jobs:", atomic.LoadUint64(&set.Output.Job))
 	set.Done <- true
 }
 

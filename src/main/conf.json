@@ -1,13 +1,13 @@
 {"Property" : 
 	[
 		{
-			"Name": "instance29_site",
+			"Name": "phoenixrun12_site",
 			"Format" : "HTTP",
 			"Host" : "phoenixdb",
-			"Port" : 8080,
+			"Port" : 4250,
 			"Mode" : "LOAD",
 			"Batch" : 50,
-			"Sites" : 50000,
+			"Sites" : 1,
 			"Distribute" : true,
 			"Spools" : 8,
 
@@ -15,7 +15,6 @@
 			"Now" : true,
 			"Seed": 3369,
 			"Samples": 1000000,
-			"Span" : 60,
 			"Duration" : 86400,
 			"Bias" : [12],
 			"Type" : ["LOGIC"],
