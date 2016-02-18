@@ -17,6 +17,7 @@ type TSOpen struct {
 
 type Datum struct {
 	Metric    string
+	Site      string
 	Timestamp int64
 	Value     float64
 	Tags      map[string]string
@@ -29,15 +30,11 @@ func (m *Datum) MarshalJSON() ([]byte, error) {
 		Value     float64           `json:"value"`
 		Tags      map[string]string `json:"tags"`
 	}{
-		Metric:    fmt.Sprintf("%s", m.Metric),
+		Metric:    fmt.Sprintf("%s%s", m.Metric, m.Site),
 		Timestamp: m.Timestamp / int64(time.Millisecond),
 		Value:     m.Value,
 		Tags:      m.Tags,
 	})
-}
-
-func Append(d *[]Datum, metric string, timestamp int64, value float64, tags map[string]string) {
-	*d = append(*d, Datum{metric, timestamp, value, tags})
 }
 
 func (open *TSOpen) Init() {
@@ -45,7 +42,7 @@ func (open *TSOpen) Init() {
 }
 
 func (open *TSOpen) Create(name string, metric string, stamp int64, value float64, tags map[string]string) {
-	open.group = append(open.group, Datum{name, stamp, value, tags})
+	open.group = append(open.group, Datum{name, metric, stamp, value, tags})
 }
 
 func (open *TSOpen) Add(host string, port int64) {
@@ -94,44 +91,6 @@ func (open *TSOpen) Add(host string, port int64) {
 
 func (open *TSOpen) Reset() {
 	open.group = []Datum{}
-}
-
-func Put(d *[]Datum) {
-
-	userJson, err := json.Marshal(d)
-	//os.Stdout.Write(userJson)
-	if err != nil {
-		fmt.Printf("Parsing data to json failed: %s", err)
-	}
-
-	usersUrl := "http://192.168.4.181:4242/api/put/?details&sync"
-
-	request, err := http.NewRequest("POST", usersUrl, bytes.NewBuffer(userJson)) //Create request with JSON body
-	if err != nil {
-		fmt.Printf("Http request setup failed: %s", err)
-	}
-
-	res, err := http.DefaultClient.Do(request)
-	if err != nil {
-		fmt.Printf("Request failed: %s", err)
-		os.Exit(1)
-	}
-	defer res.Body.Close()
-
-	contents, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		fmt.Printf("%s", err)
-		fmt.Printf("%s\n", string(contents))
-		os.Exit(1)
-	}
-	//fmt.Printf("%s\n", string(contents))
-
-	if res.StatusCode != 200 {
-		fmt.Println(res)
-		fmt.Printf("Success expected: %d", res.StatusCode) //Uh-oh this means our test failed
-		os.Exit(1)
-	}
-	//os.Stdout.Write(userJson)
 }
 
 func Query() {

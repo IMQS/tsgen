@@ -1,4 +1,7 @@
-.41 
+.42  Update openTSDB to handle multiple sites
+
+.41 Current configuration for opentsdb benchmarking.  Going to commit with 
+	this configuration already set up since current benchmarking is taking place on openTSDB.
 
 .40 Current status of code been used to interface to Newts, KairosDB and 
 	OpenTSDB.
