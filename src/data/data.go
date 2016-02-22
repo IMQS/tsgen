@@ -25,7 +25,7 @@ const (
 type TSSet struct {
 	Id       int64               // Unique identifier of data set
 	Property config.TSProperties // Set of properties that fully describe set
-	Output   out.TSDestination   // Fully describes the type of output for set
+	Output   out.TSOutput        // Fully describes the type of output for set
 	Profile  profile.TSProfile   // Tool to do simple profiling on code
 
 	idxSample int64 // Index of the current sample being processed in set

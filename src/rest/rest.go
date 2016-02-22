@@ -7,7 +7,7 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"net/http"
-	"os"
+	//"os"
 	"strconv"
 	"time"
 )
@@ -119,20 +119,20 @@ func (db *TSDBase) Create(metric string, site string, stamp int64, value float64
 func (db *TSDBase) Response(resp *http.Response, code int) {
 	if resp == nil {
 		fmt.Print("No response")
-		os.Exit(1)
+		//os.Exit(1)
 	} else {
 		contents, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			fmt.Printf("%s", err)
 			fmt.Printf("%s\n", string(contents))
-			os.Exit(1)
+			//os.Exit(1)
 		}
 
 		if resp.StatusCode != code {
 			fmt.Println()
 			fmt.Println("Response code: ", resp.StatusCode) //Uh-oh this means our test failed
 			fmt.Println()
-			os.Exit(1)
+			//os.Exit(1)
 		}
 
 		defer resp.Body.Close()
@@ -166,7 +166,12 @@ func (db *TSDBase) Add(host string, port int64) {
 
 	}
 
-	resp, _ := http.Post(url, "application/json", bytes.NewReader(mJson))
+	resp, err := http.Post(url, "application/json", bytes.NewReader(mJson))
+
+	if err != nil {
+		fmt.Printf("%s", err)
+		//os.Exit(1)
+	}
 
 	switch db.DBase {
 	case KAIROS:
@@ -177,6 +182,7 @@ func (db *TSDBase) Add(host string, port int64) {
 		db.Response(resp, 200)
 	default:
 	}
+
 	db.Reset()
 
 }

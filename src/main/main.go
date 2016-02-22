@@ -48,7 +48,9 @@ func main() {
 		 * Start the creation of each dataset as a separate go concurrent
 		 * process(es)
 		 */
+		//go sets[idxProps].Create()
 		go sets[idxProps].Create()
+
 	}
 
 	// Wait for each of the data sets to complete before exit

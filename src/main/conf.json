@@ -2,31 +2,32 @@
 	[
 		{
 			"DBase" : "OPEN",
-			"Name": "grafdata10_",
+			"Name": "spools5_",
 			"Form" : "HTTP",
-			"Host" : "192.168.4.209",
+			"SeedX": 3369,
+			"Samples": 1000000,
+			"Duration" : 60,
+			"Start" : "2016-02-18T00:00:00+02:00",
+			"Now" : true,
+			"Type" : ["LOGIC"],
+			"Bias" : [12],
+			"Batch" : 50,
+
+			"Host" : "phoenixdb",
 			"Port" : 4250,
 			"Mode" : "LOAD",
-			"Batch" : 50,
-			"Sites" : 1,
 			"Distribute" : true,
+			"Sites" : 50000,
 			"Spools" : 8,
-
-			"Start" : "2016-02-18T00:00:00+02:00",
-			"SeedX": 4521,
-			"Samples": 100000,
-			"Duration" : 3600,
-			"Bias" : [12],
-			"Type" : ["SIN"],
 
 			"Freq" : [1],
 			"Amp" : [2],
 
 			"Toggles" : [562],
 			"State"	: "LOW",
-			"High" : 3.3,
-			"Low" : 0
-		}	
-
+			"Low" : 0,
+			"High" : 3.3
+			
+		}
 	]
 }

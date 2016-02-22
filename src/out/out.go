@@ -18,13 +18,10 @@ const (
 )
 
 // Structure completely defines data destination
-type TSDestination struct {
+type TSOutput struct {
+	Path     string               // Usually a file path when writing to disk
 	Property *config.TSProperties // Set of properties that fully describe set
-
-	//Type config.EFormatType // Type of output that is addressed in this instance
-	Path string // Usually a file path when writing to disk
-
-	REST []rest.TSDBase // Structure that describes the REST output in full
+	REST     []rest.TSDBase       // Structure that describes the REST output in full
 
 	Job  uint64
 	Jobs chan uint64 // Manages jobs for spooling
@@ -43,16 +40,17 @@ type TSDestination struct {
 
 }
 
-func (dst *TSDestination) Init() {
+func (dst *TSOutput) Init() {
 	switch dst.Property.Form {
 	case config.CSV:
+		// Create header row for CSV file
 		dst.Hdr = make([]string, 0)
 		var b byte
 		for _, b = range []byte("Time") {
 			dst.Content = append(dst.Content, b)
 		}
 		dst.Content = append(dst.Content, 44) // comma
-		//strconv.AppendQuoteToASCII(dst.Content, "Value")
+
 		for _, b = range []byte(`Value`) {
 			dst.Content = append(dst.Content, b)
 		}
@@ -62,17 +60,23 @@ func (dst *TSDestination) Init() {
 		//  Always Create the file here
 		disk, err := os.Create(dst.Path)
 		if err != nil {
-
+			fmt.Println("File not created.")
+			os.Exit(3)
 		}
 		// Close the file so that it may be opened in a different mode
 		disk.Close()
 	case config.HTTP:
+		// Initialise REST request/query
 		dst.REST = make([]rest.TSDBase, dst.Property.Spools)
+		// Create buffers that recevie data from signal transform pipe
 		dst.SpoolStamp = make([][]int64, dst.Property.Spools)
 		dst.SpoolValue = make([][]float64, dst.Property.Spools)
+		// Initiate the job counter as one of the verification metrics
 		dst.Job = 0
+		// Initiate the pipes that will control the concurrent workforce
 		dst.Jobs = make(chan uint64)
 		dst.Done = make(chan int64, dst.Property.Spools)
+		// Create each Spool (worker) for concurrent processing of jobs
 		var id int64
 		for id = 0; id < dst.Property.Spools; id++ {
 			dst.REST[id].DBase = dst.Property.DBase
@@ -86,31 +90,36 @@ func (dst *TSDestination) Init() {
 
 }
 
-func (dst *TSDestination) Dump() {
-	if dst.Verbose {
-		fmt.Println("dst.Dump")
-	}
-
-	if dst.Property.Form == config.CSV {
+func (dst *TSOutput) Dump() {
+	switch dst.Property.Form {
+	case config.CSV:
+		/**
+		 * No concurrent workers for writing to CSV file implemented.
+		 * Files are created concurrently to one another, but the complexity
+		 * of managing order of writes is just not worth the effort
+		 */
 		dst.Format(0)
+	default:
 	}
+	// Create the output
 	dst.Out()
 
 }
 
-func (dst *TSDestination) Spool(id int64) {
+func (dst *TSOutput) Spool(id int64) {
 	for _ = range dst.Jobs {
+		// Prepare samples for output
 		dst.Format(id)
-		// Data already formatted to content, use REST API
+		// Do HTTP request for adding data points to tsdb
 		dst.REST[id].Add(dst.Property.Host, dst.Property.Port)
-		//fmt.Print("#", dst.Job, id)
+		// Atomically increase job counter for verification
 		atomic.AddUint64(&dst.Job, 1)
 	}
 	fmt.Print("@", id)
 	dst.Done <- id
 }
 
-func (dst *TSDestination) Format(id int64) {
+func (dst *TSOutput) Format(id int64) {
 	/*
 	 * Implement formatting for set of data made available to
 	 * the output according to the format type specifier config item
@@ -145,6 +154,7 @@ func (dst *TSDestination) Format(id int64) {
 			dst.SpoolValue[id] = make([]float64, len(dst.Value))
 			copy(dst.SpoolStamp[id], dst.Stamp)
 			copy(dst.SpoolValue[id], dst.Value)
+			//dst.Flush()
 			dst.REST[id].Init(id)
 
 			for dst.REST[id].IdxSeries = 0; dst.REST[id].IdxSeries < len(dst.SpoolStamp[id]); dst.REST[id].IdxSeries++ {
@@ -155,8 +165,6 @@ func (dst *TSDestination) Format(id int64) {
 				dst.REST[id].Tags = map[string]string{"site": "north", "alarm": "none"}
 				// Kairos DB & OpenTS DB
 				dst.REST[id].Create(dst.Property.Name, dst.REST[id].Site, dst.SpoolStamp[id][dst.REST[id].IdxSeries], dst.SpoolValue[id][dst.REST[id].IdxSeries], dst.REST[id].Tags)
-				// NewTS DB
-				//dst.REST[id].Create(dst.Name, dst.REST[id].Metric, dst.SpoolStamp[id][dst.REST[id].IdxSeries], dst.SpoolValue[id][dst.REST[id].IdxSeries], dst.REST[id].Tags)
 			}
 			//fmt.Println(string(dst.REST[id].Json.Bytes()))
 		default:
@@ -164,46 +172,51 @@ func (dst *TSDestination) Format(id int64) {
 	}
 }
 
-func (dst *TSDestination) Out() {
-	if dst.Verbose {
-		fmt.Println("dst.Write")
-	}
-
+func (dst *TSOutput) Out() {
 	switch dst.Property.Form {
 	case config.CSV:
-		disk := dst.Open()
-		defer dst.Close(disk)
-
-		// Data already formatted to content, write to disk
-		disk.Write(dst.Content)
-		dst.Flush()
+		dst.CSV()
 	case config.HTTP:
 		// Add a job for the first available spool to process
 		dst.Jobs <- dst.Job
 	default:
-		disk := dst.Open()
-		defer dst.Close(disk)
-		/**
-		 * Default CSV format writer for data set implemented as
-		 * first order solution but generic enough to use as
-		 * default case and data dump if not properly defined in config
-		 */
-		w := csv.NewWriter(disk)
-		for idx, value := range dst.Value {
-			var line = make([]string, 0)
-			line = append(line, strconv.FormatInt(dst.Stamp[idx], 10),
-				strconv.FormatFloat(value, 'f', -1, 64))
-			err := w.Write(line)
-			if err != nil {
-				fmt.Print("Cannot write to file ", err)
-			}
-		}
-		w.Flush()
+		dst.defaultCSV()
 	}
-
 }
 
-func (dst *TSDestination) Open() *os.File {
+func (dst *TSOutput) defaultCSV() {
+	disk := dst.Open()
+	defer dst.Close(disk)
+	/**
+	 * Default CSV format writer for data set implemented as
+	 * first order solution but generic enough to use as
+	 * default case and data dump if not properly defined in config.
+	 * Note that for each record a write is initiated which makes
+	 * this a very slow way of creating the output.
+	 */
+	w := csv.NewWriter(disk)
+	for idx, value := range dst.Value {
+		var line = make([]string, 0)
+		line = append(line, strconv.FormatInt(dst.Stamp[idx], 10),
+			strconv.FormatFloat(value, 'f', -1, 64))
+		err := w.Write(line)
+		if err != nil {
+			fmt.Print("Cannot write to file ", err)
+		}
+	}
+	w.Flush()
+}
+
+func (dst *TSOutput) CSV() {
+	disk := dst.Open()
+	defer dst.Close(disk)
+
+	// Data already formatted to content, write to disk
+	disk.Write(dst.Content)
+	dst.Flush()
+}
+
+func (dst *TSOutput) Open() *os.File {
 	// Test whether file already exist
 	if _, err := os.Stat(dst.Path); os.IsNotExist(err) {
 		_, err = os.Create(dst.Path)
@@ -217,11 +230,11 @@ func (dst *TSDestination) Open() *os.File {
 	return disk
 }
 
-func (dst *TSDestination) Close(disk *os.File) {
+func (dst *TSOutput) Close(disk *os.File) {
 	disk.Close()
 }
 
-func (dst *TSDestination) Flush() {
+func (dst *TSOutput) Flush() {
 	// Flush the content of the output block and reset the buffers
 	switch dst.Property.Form {
 	case config.CSV:
@@ -232,10 +245,9 @@ func (dst *TSDestination) Flush() {
 	default:
 
 	}
-
 }
 
-func (dst *TSDestination) Wait(Td float64, to chan bool) {
+func (dst *TSOutput) Wait(Td float64, to chan bool) {
 	var timeout profile.TSProfile
 	timeout.Execute.Start(time.Duration(Td * 1e9))
 	for {
