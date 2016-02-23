@@ -56,8 +56,15 @@ func main() {
 	// Wait for each of the data sets to complete before exit
 	for idxProps := 0; idxProps < len(configs.Property); idxProps++ {
 		<-sets[idxProps].Done
+		fmt.Println("Samples/s:", float64(float64(sets[idxProps].Property.Samples)/float64(float64(ex.Execute.Elapsed())/1e9)))
+		fmt.Println("Sites:", sets[idxProps].Property.Sites)
+		fmt.Println("Samples:", sets[idxProps].Property.Samples)
+		fmt.Println("Batch:", sets[idxProps].Property.Batch)
+		fmt.Println("Spools:", sets[idxProps].Property.Spools)
+
 	}
 
 	fmt.Println("Done")
 	fmt.Println("Total execution time:", float64(ex.Execute.Elapsed())/1e9, "s")
+
 }

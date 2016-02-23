@@ -63,6 +63,7 @@ type TSProperties struct {
 	Sites      uint64      // Number of sites to simulate data for
 	Distribute bool        // Distribute points between Sites at random
 	Spools     int64       // Number of pools to sping up
+	Post       bool
 
 	// Content
 	Start    time.Time // specified in year, month etc

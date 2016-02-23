@@ -2,16 +2,16 @@
 	[
 		{
 			"DBase" : "OPEN",
-			"Name": "spools5_",
+			"Name": "phoenixdb_bench_site",
 			"Form" : "HTTP",
 			"SeedX": 3369,
-			"Samples": 1000000,
+			"Samples": 10000,
 			"Duration" : 60,
-			"Start" : "2016-02-18T00:00:00+02:00",
+			"Start" : "2016-02-22T00:00:00+02:00",
 			"Now" : true,
 			"Type" : ["LOGIC"],
 			"Bias" : [12],
-			"Batch" : 50,
+			"Batch" : 1,
 
 			"Host" : "phoenixdb",
 			"Port" : 4250,
@@ -19,6 +19,7 @@
 			"Distribute" : true,
 			"Sites" : 50000,
 			"Spools" : 8,
+			"Post" : false,
 
 			"Freq" : [1],
 			"Amp" : [2],

@@ -1,3 +1,12 @@
+.51 For OpenTSDB, at a batch value of 1, the JSON looks a bit different
+	than for more than one sample at a time.  Implement code to handle this
+	scenario.  TODO: Known issue with the marshalling that does not 
+	create the correct JSON structure for a single value yet, although the 
+	framework to handle this scenario has been implemented.
+.50 Insert a print out of the sample write rate achieved
+.49 Update code to actually write to 50 000 sites and not the same seed random
+	values that only wrote to a much smaller number of sites.
+
 .48 No need to update code to perform benchmarks to different data base
 	types that are currently supported as compile time.
 .47 Implement the Format function in out.go to be more resiliant

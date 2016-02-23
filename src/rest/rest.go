@@ -31,7 +31,9 @@ type TSDataPoint struct {
 }
 
 type TSDBase struct {
-	batch []TSDataPoint
+	single TSDataPoint
+	batch  []TSDataPoint
+	Post   bool
 
 	DBase     EDBaseType
 	Id        int64
@@ -106,10 +108,11 @@ func write(b *bytes.Buffer, a []byte) {
 	}
 }
 
-func (db *TSDBase) Init(id int64) {
+func (db *TSDBase) Init(id int64, post bool) {
 	db.Id = id
 	db.Seed = 100
 	db.SrcSite = rand.NewSource(db.Seed)
+	db.Post = post
 }
 
 func (db *TSDBase) Create(metric string, site string, stamp int64, value float64, tags map[string]string) {
@@ -142,6 +145,8 @@ func (db *TSDBase) Response(resp *http.Response, code int) {
 func (db *TSDBase) Add(host string, port int64) {
 	var url string = "http://"
 	var cmd string
+	var fSingle bool = false
+
 	switch db.DBase {
 	case KAIROS:
 		cmd = "api/v1/datapoints"
@@ -149,6 +154,11 @@ func (db *TSDBase) Add(host string, port int64) {
 		cmd = "samples"
 	case OPEN:
 		cmd = "api/put/?details"
+		if len(db.batch) == 1 {
+			db.single = db.batch[0]
+			fSingle = true
+		}
+
 	default:
 
 	}
@@ -159,30 +169,46 @@ func (db *TSDBase) Add(host string, port int64) {
 	url += "/"
 	url += cmd
 
-	mJson, _ := json.Marshal(db.batch)
-	//fmt.Println(string(mJson))
+	var mJson = make([]byte, 0)
+	var jerr error
+	switch db.DBase {
+	case OPEN:
+		fmt.Println(fSingle)
+		if fSingle {
+			mJson, jerr = json.Marshal(db.single)
+			if jerr != nil {
+				fmt.Println(jerr)
+			}
+		} else {
+			mJson, _ = json.Marshal(db.batch)
+		}
+	default:
+		mJson, _ = json.Marshal(db.batch)
+	}
+	fmt.Println(string(mJson))
 
 	if mJson != nil {
 
 	}
 
-	resp, err := http.Post(url, "application/json", bytes.NewReader(mJson))
+	if db.Post {
+		resp, err := http.Post(url, "application/json", bytes.NewReader(mJson))
 
-	if err != nil {
-		fmt.Printf("%s", err)
-		//os.Exit(1)
+		if err != nil {
+			fmt.Printf("%s", err)
+			//os.Exit(1)
+		}
+
+		switch db.DBase {
+		case KAIROS:
+			db.Response(resp, 204)
+		case NEW:
+			db.Response(resp, 201)
+		case OPEN:
+			db.Response(resp, 200)
+		default:
+		}
 	}
-
-	switch db.DBase {
-	case KAIROS:
-		db.Response(resp, 204)
-	case NEW:
-		db.Response(resp, 201)
-	case OPEN:
-		db.Response(resp, 200)
-	default:
-	}
-
 	db.Reset()
 
 }

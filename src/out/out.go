@@ -5,6 +5,7 @@ import (
 	"encoding/csv"
 	"fmt"
 	"math"
+	"math/rand"
 	"os"
 	"profile"
 	"rest"
@@ -28,6 +29,8 @@ type TSOutput struct {
 	Done chan int64  // Manages jobs for spooling
 
 	Verbose bool // enable or disable verbose display during create
+
+	SrcSite []rand.Source
 
 	// CSV
 	Hdr     []string // Coloumn headers for CSV output type
@@ -66,8 +69,18 @@ func (dst *TSOutput) Init() {
 		// Close the file so that it may be opened in a different mode
 		disk.Close()
 	case config.HTTP:
+
 		// Initialise REST request/query
 		dst.REST = make([]rest.TSDBase, dst.Property.Spools)
+
+		/**
+		 * Create random source for each spool from different seed
+		 * Initially made the mistake to regenerate the source for eacg
+		 * batch process, thus there were never more than batch number of
+		 * different sites
+		 */
+		dst.SrcSite = make([]rand.Source, dst.Property.Spools)
+
 		// Create buffers that recevie data from signal transform pipe
 		dst.SpoolStamp = make([][]int64, dst.Property.Spools)
 		dst.SpoolValue = make([][]float64, dst.Property.Spools)
@@ -80,6 +93,7 @@ func (dst *TSOutput) Init() {
 		var id int64
 		for id = 0; id < dst.Property.Spools; id++ {
 			dst.REST[id].DBase = dst.Property.DBase
+			dst.SrcSite[id] = rand.NewSource(12359 % (id + 1))
 			go dst.Spool(id)
 		}
 
@@ -155,11 +169,11 @@ func (dst *TSOutput) Format(id int64) {
 			copy(dst.SpoolStamp[id], dst.Stamp)
 			copy(dst.SpoolValue[id], dst.Value)
 			//dst.Flush()
-			dst.REST[id].Init(id)
+			dst.REST[id].Init(id, dst.Property.Post)
 
 			for dst.REST[id].IdxSeries = 0; dst.REST[id].IdxSeries < len(dst.SpoolStamp[id]); dst.REST[id].IdxSeries++ {
 				if dst.Property.Distribute {
-					dst.REST[id].Val = int64((float64(dst.REST[id].SrcSite.Int63()) / float64(math.MaxInt64)) * float64(dst.Property.Sites))
+					dst.REST[id].Val = int64((float64(dst.SrcSite[id].Int63()) / float64(math.MaxInt64)) * float64(dst.Property.Sites))
 					dst.REST[id].Site = strconv.FormatInt(dst.REST[id].Val, 10)
 				}
 				dst.REST[id].Tags = map[string]string{"site": "north", "alarm": "none"}
