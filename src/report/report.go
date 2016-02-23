@@ -9,7 +9,7 @@ import (
 	"reflect"
 )
 
-type Report struct {
+type TSReport struct {
 	ReportFields []string
 	Name         string
 }
@@ -21,11 +21,11 @@ func check(e error) {
 	}
 }
 
-func (r *Report) AddString(m string) {
+func (r *TSReport) AddString(m string) {
 	r.ReportFields = append(r.ReportFields, m)
 }
 
-func (r *Report) Create() {
+func (r *TSReport) Create() {
 	if r.ReportFields == nil {
 		fmt.Println("Empty report")
 		os.Exit(1)
@@ -46,7 +46,7 @@ func (r *Report) Create() {
 
 }
 
-func (r *Report) AddStruct(t config.TSProperties) {
+func (r *TSReport) AddStruct(t config.TSProperties) {
 	s := reflect.ValueOf(&t).Elem()
 	typeOfT := s.Type()
 

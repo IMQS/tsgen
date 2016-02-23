@@ -39,7 +39,7 @@ type TSSet struct {
 	Value []float64     // normalised before transform
 	State config.EState // Start up state for LOGIC signals
 
-	Report *report.Report // Report of test results
+	Report *report.TSReport // Report of test results
 
 	Done chan bool // Each set acknowledges when it has completed
 }
