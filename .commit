@@ -1,3 +1,18 @@
+.61 Implement the Output publishing for queues
+.60 Implement the Output initialisation for the RABBIT form
+.59 Subscribe queues to either PUBLISH, CONSUME or BOTH
+.58 Add configuration items to instantiate queues
+.57 Reorganise the items in TSProperties according to the classification in the 
+	documentation on tsgen at https://github.com/IMQS/tsgen.git.  Note that changes
+	made to the README.md file has been lost at some point, either to not committing
+	them or an overwrite during the CITUS push and/or Report pull request.
+.56 Call on the Rabbit Init function that currently kicks all of the RabbitMQ
+	consumer listeners into life
+.55 Add a slice of Rabbit to the TSOutput structure
+.54 Implement consumers and publishers of RabbitMQ
+.53 Implement the necessary structures to support RabbitMQ as an Output format
+.52 Add package rabbit for RabbitMQ Form via rabbit.go, consume.go and publish.go 
+
 .51 For OpenTSDB, at a batch value of 1, the JSON looks a bit different
 	than for more than one sample at a time.  Implement code to handle this
 	scenario.  TODO: Known issue with the marshalling that does not 

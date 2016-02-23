@@ -3,7 +3,7 @@
 		{
 			"DBase" : "OPEN",
 			"Name": "phoenixdb_bench_site",
-			"Form" : "HTTP",
+			"Form" : "RABBIT",
 			"SeedX": 3369,
 			"Samples": 10000,
 			"Duration" : 60,
@@ -13,13 +13,18 @@
 			"Bias" : [12],
 			"Batch" : 1,
 
-			"Host" : "phoenixdb",
-			"Port" : 4250,
+			"Host" : "localhost",
+			"Port" : 5672,
+			"User" : "guest",
+			"Pass" : "guest",
 			"Mode" : "LOAD",
 			"Distribute" : true,
 			"Sites" : 50000,
 			"Spools" : 8,
 			"Post" : false,
+
+			"Queues" : ["Q1"],
+			"Subscribe" : ["PUBLISH"],
 
 			"Freq" : [1],
 			"Amp" : [2],

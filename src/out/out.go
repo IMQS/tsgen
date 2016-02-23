@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"os"
 	"profile"
+	"rabbit"
 	"rest"
 	"strconv"
 	"sync/atomic"
@@ -23,6 +24,7 @@ type TSOutput struct {
 	Path     string               // Usually a file path when writing to disk
 	Property *config.TSProperties // Set of properties that fully describe set
 	REST     []rest.TSDBase       // Structure that describes the REST output in full
+	Rabbit   []rabbit.TSQueue
 
 	Job  uint64
 	Jobs chan uint64 // Manages jobs for spooling
@@ -96,7 +98,14 @@ func (dst *TSOutput) Init() {
 			dst.SrcSite[id] = rand.NewSource(12359 % (id + 1))
 			go dst.Spool(id)
 		}
-
+	case config.RABBIT:
+		for id, name := range dst.Property.Queues {
+			dst.Rabbit = append(dst.Rabbit, rabbit.TSQueue{name, dst.Property.Subscribe[id], nil, nil})
+			dst.Rabbit[id].Init()
+		}
+		for _, queue := range dst.Rabbit {
+			queue.Build(dst.Property.User, dst.Property.Pass, dst.Property.Host, dst.Property.Port)
+		}
 	default:
 	}
 
@@ -181,6 +190,8 @@ func (dst *TSOutput) Format(id int64) {
 				dst.REST[id].Create(dst.Property.Name, dst.REST[id].Site, dst.SpoolStamp[id][dst.REST[id].IdxSeries], dst.SpoolValue[id][dst.REST[id].IdxSeries], dst.REST[id].Tags)
 			}
 			//fmt.Println(string(dst.REST[id].Json.Bytes()))
+		case config.RABBIT:
+
 		default:
 		}
 	}
@@ -193,6 +204,8 @@ func (dst *TSOutput) Out() {
 	case config.HTTP:
 		// Add a job for the first available spool to process
 		dst.Jobs <- dst.Job
+	case config.RABBIT:
+		dst.Publish()
 	default:
 		dst.defaultCSV()
 	}
@@ -228,6 +241,17 @@ func (dst *TSOutput) CSV() {
 	// Data already formatted to content, write to disk
 	disk.Write(dst.Content)
 	dst.Flush()
+}
+
+func (dst *TSOutput) Publish() {
+	for _, queue := range dst.Rabbit {
+		//for id, pub := range queue.Publish {
+		for _, pub := range queue.Publish {
+			fmt.Println("OnQueue")
+			pub.Do([]byte("HALO"))
+
+		}
+	}
 }
 
 func (dst *TSOutput) Open() *os.File {

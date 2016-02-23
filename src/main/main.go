@@ -46,11 +46,6 @@ func main() {
 		// Create a channel for each data set to indicate when it is done
 		sets[idxProps].Done = make(chan bool)
 
-		/**
-		 * Start the creation of each dataset as a separate go concurrent
-		 * process(es)
-		 */
-		//go sets[idxProps].Create()
 		// Open Report with config settings
 		sets[idxProps].Report = new(report.TSReport)
 		sets[idxProps].Report.Name = "Report_" + strconv.Itoa(idxProps+1)
@@ -58,6 +53,10 @@ func main() {
 		sets[idxProps].Report.AddString("***Config***")
 		sets[idxProps].Report.AddStruct(v)
 
+		/**
+		 * Start the creation of each dataset as a separate go concurrent
+		 * process(es)
+		 */
 		go sets[idxProps].Create()
 
 	}

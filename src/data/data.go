@@ -9,14 +9,15 @@ import (
 	"out"
 	"profile"
 	"report"
-	"strconv"
+	//"strconv"
 	"sync/atomic"
 )
 
 // Package constant
 const (
-	pageCSV  uint64 = 131072 //page size at which data gets dumped to file
-	pageHTTP uint64 = 1      //page size at which data gets batched for HTTP REST API
+	pageCSV    uint64 = 131072 //page size at which data gets dumped to file
+	pageHTTP   uint64 = 1      //page size at which data gets batched for HTTP REST API
+	pageRABBIT uint64 = 1      //page size at which data gets batched for HTTP REST API
 )
 
 /**
@@ -152,6 +153,10 @@ func (set *TSSet) Create() {
 			if set.Property.Batch <= 0 {
 				set.Property.Batch = pageHTTP
 			}
+		case config.RABBIT:
+			if set.Property.Batch <= 0 {
+				set.Property.Batch = pageRABBIT
+			}
 		default:
 		}
 
@@ -188,6 +193,7 @@ func (set *TSSet) Create() {
 		for j = 0; j < jobs; j++ {
 			<-set.Output.Jobs
 		}
+	case config.RABBIT:
 
 	default:
 	}
@@ -201,9 +207,9 @@ func (set *TSSet) Create() {
 	fmt.Println(set.Profile.Execute.Telapsed.Seconds(), "s")
 
 	fmt.Println("Jobs:", atomic.LoadUint64(&set.Output.Job))
-	set.Report.AddString("\n" + strconv.FormatFloat(set.Profile.Execute.Telapsed.Seconds(), 'f', 6, 64) + " s")
-	set.Report.AddString("Jobs:" + strconv.FormatUint(atomic.LoadUint64(&set.Output.Job), 16))
-	set.Report.Create()
+	//set.Report.AddString("\n" + strconv.FormatFloat(set.Profile.Execute.Telapsed.Seconds(), 'f', 6, 64) + " s")
+	//set.Report.AddString("Jobs:" + strconv.FormatUint(atomic.LoadUint64(&set.Output.Job), 16))
+	//set.Report.Create()
 	set.Done <- true
 }
 
@@ -214,9 +220,6 @@ func (set *TSSet) Process() {
 
 	copy(set.Output.Stamp, set.Stamp)
 	copy(set.Output.Value, set.Value)
-
-	//fmt.Println(set.Output.Stamp)
-	//fmt.Println(set.Output.Value)
 
 	// Clear the source buffer that sits within
 	set.Stamp = make([]int64, 0)

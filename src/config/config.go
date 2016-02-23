@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"rabbit"
 	"rest"
 	"time"
 )
@@ -12,8 +13,9 @@ import (
 type EFormatType string
 
 const (
-	CSV  EFormatType = "CSV"
-	HTTP EFormatType = "HTTP"
+	CSV    EFormatType = "CSV"
+	HTTP   EFormatType = "HTTP"
+	RABBIT EFormatType = "RABBIT"
 )
 
 func (format *EFormatType) String() string {
@@ -52,42 +54,52 @@ type TSConfig struct {
 }
 
 type TSProperties struct {
-	// Set/File
-	DBase      rest.EDBaseType
-	Name       string      // Identifier string for time series data
-	Form       EFormatType // Output format
-	Host       string      // Host name in IP address format
-	Port       int64       // Port number
-	Mode       EMode       // Time based or load
-	Batch      uint64      // Number of samples to batch for an HTTP post
-	Sites      uint64      // Number of sites to simulate data for
-	Distribute bool        // Distribute points between Sites at random
-	Spools     int64       // Number of pools to sping up
-	Post       bool
+	// BASIC
+	DBase    rest.EDBaseType
+	Name     string      // Identifier string for time series data
+	Form     EFormatType // Output format
+	SeedX    int64       // unitless
+	Samples  uint64      // unitless
+	Duration float64     // seconds
+	Start    time.Time   // specified in year, month etc
+	Now      bool        // When true overrides the Start time with Now()
+	Type     []ESignal   // data type
+	Bias     []float64
+	Batch    uint64 // Number of samples to batch for an HTTP post
 
-	// Content
-	Start    time.Time // specified in year, month etc
-	Now      bool      // When true overrides the Start time with Now()
-	SeedX    int64     // unitless
-	Samples  uint64    // unitless
-	Duration float64   // seconds
-	Type     []ESignal // data type
-	Compound bool      // Combine different signals to form one
+	// Form CSV
 
-	Bias []float64
-	// Type specifics
-	// Sin/Cos/Clock
+	// Form HTTP
+	Host       string // Host name in IP address format
+	Port       int64  // Port number
+	User       string // Username
+	Pass       string // Password
+	Mode       EMode  // Time based or load
+	Distribute bool   // Distribute points between Sites at random
+	Sites      uint64 // Number of sites to simulate data for
+	Spools     int64  // Number of pools to sping up
+	Post       bool   // Flag that enables/diable HTTP posts
+
+	Queues    []string            // Array of Queue names
+	Subscribe []rabbit.ESubscribe // Queue subscriptions
+
+	// Derived
+	Compound bool // Combine different signals to form one
+
+	// Type SIN/COS/CLOCK
 	Freq []float64 // Hz (Hertz) if applicable
 	Amp  []float64 // unitless
-	// Logic
+
+	// Type LOGIC
 	Toggles []uint64 // Number of toggles in logic
 	State   EState   // Start state for logic
 	High    float64  // Factor to scale the logic HIGH signal level
 	Low     float64  // Factor to scale the logic LOW signal level
 
+	// Type RANDOM
 	SeedY int64 // Seed used to generate the RANDOM type data set
 
-	// Clock
+	// Type CLOCK
 	Duty float64 // Duty cycle of the clock signal
 
 	// Control
