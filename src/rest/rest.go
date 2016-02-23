@@ -18,6 +18,7 @@ const (
 	KAIROS EDBaseType = "KAIROS"
 	OPEN   EDBaseType = "OPEN"
 	NEW    EDBaseType = "NEW"
+	CITUS  EDBaseType = "CITUS"
 )
 
 type TSDataPoint struct {
@@ -92,6 +93,16 @@ func (dp *TSDataPoint) MarshalJSON() ([]byte, error) {
 			Type:      "GAUGE",
 			Value:     dp.value,
 		})
+	case CITUS:
+		return json.Marshal(&struct {
+			Metric    string
+			Timestamp int64
+			Value     float64
+		}{
+			Metric:    fmt.Sprintf("%s%s", dp.metric, dp.site),
+			Timestamp: dp.stamp / int64(time.Millisecond),
+			Value:     dp.value,
+		})
 	default:
 		return make([]byte, 0), nil
 	}
@@ -158,6 +169,8 @@ func (db *TSDBase) Add(host string, port int64) {
 			db.single = db.batch[0]
 			fSingle = true
 		}
+	case CITUS:
+		cmd = "citus"
 
 	default:
 
