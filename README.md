@@ -94,9 +94,9 @@ The table lists the parameters pertaining to a **Format** of the *HTTP* type.  N
 |High|*float64*|**Type** *LOGIC*|Not to be confused with the *State* *HIGH*.  Value of a logic HIGH.||"HIGH" : 3.3|Yes|
 
 ####RANDOM
-There are no specific configuration items surrounding a random value time series yet.
-TODO: Allow for a configurable seed value for the time series transform (currently fixed value)
-
+|Parameter|Type|Relevance|Description|Detail|Example|Required
+|:---|:---|:---|:---|:---|:---|:---|
+|SeedY|*int64*|GLOBAL|Seed on which the random data points for the time series is based||"SeedY" : 478|Yes|
 
 ####Compound
 The compound signal is not a specific transform **Type**.  It is an implied type. This is achieved when more than one entry in the **Type** slice is specified.  **Note** that the number of items in the **Bias**, **Freq** and **Amp** properties has to match the number of entries in the **Type** property slice.
