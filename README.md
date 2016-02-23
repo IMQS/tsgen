@@ -7,51 +7,37 @@ The `tsgen` time series generator
 The configuration file is a JSON data structure that enables the definition of data sets.  Provided is an example of a configuration file that defines both *CSV* and *HTTP* output.
 
 ```json
- {"Property" : 
- 	[
- 		{
- 			"Name": "alarm",
- 			"Format" : "HTTP",
- 			"Host" : "192.168.4.209",
- 			"Port" : 4242,
- 			"Mode" : "LOAD",
- 			"Batch" : 50,
- 			"Sites" : 1,
- 			"Distribute" : true,
- 			"Spools" : 8,
-
-			"Start" : "2016-02-01T14:00:00+02:00",
-			"Now" : true,
-			"Seed": 3369,
-			"Samples": 10000,
-			"Duration" : 86400,
-			"Bias" : [12],
-			"Type" : ["LOGIC"],
-
-			"Freq" : [10],
-			"Amp" : [2],
-
-			"Toggles" : [148],
-			"State"	: "LOW",
-			"High" : 5,
-			"Low" : 0
-		},
+{"Property" : 
+	[
 		{
-			"Name": "compound",
-			"Format" : "CSV",
-			"Mode" : "STORE",
-			"Batch" : 131072,
-
-			"Start" : "2016-02-01T14:00:00+02:00",
-			"Now" : true,
-			"Seed": 3369,
+			"DBase" : "OPEN",
+			"Name": "phoenixdb_bench_site",
+			"Form" : "HTTP",
+			"SeedX": 3369,
 			"Samples": 10000,
 			"Duration" : 60,
-			"Bias" : [12, 0, 0, 0, 0],
-			"Type" : ["SIN", "SIN", "SIN","SIN", "SIN"],
+			"Start" : "2016-02-22T00:00:00+02:00",
+			"Now" : true,
+			"Type" : ["LOGIC"],
+			"Bias" : [12],
+			"Batch" : 1,
 
-			"Freq": [50,2500, 5000, 15000, 20000, 50000],
-			"Amp" : [0.3, 0.1, 0.1, 0.1, 0.05, 0.05]
+			"Host" : "phoenixdb",
+			"Port" : 4250,
+			"Mode" : "LOAD",
+			"Distribute" : true,
+			"Sites" : 50000,
+			"Spools" : 8,
+			"Post" : false,
+
+			"Freq" : [1],
+			"Amp" : [2],
+
+			"Toggles" : [562],
+			"State"	: "LOW",
+			"Low" : 0,
+			"High" : 3.3
+			
 		}
 	]
 }
@@ -63,9 +49,10 @@ The table lists the basic parameters of the configuration file.  Note that their
 
 |Parameter|Type|Relevance|Description|Detail|Example|Required
 |:---|:---|:---|:---|:---|:---|:---|
+|DBase|EDBaseType|GLOBAL|Determines the predefined time series or other database|*CITUS*, *KAIROS*, *OPEN* and *NEW* supported|"DBase" : "KAIROS"|Optional|
 |Name|*string*|GLOBAL|Identifier for time series data set||"Name" : "voltage"|Yes|
-|Format|*string*|GLOBAL|Output type|*CSV* or *HTTP*|"Format" : "HTTP"|Yes|
-|Seed|*int64*|GLOBAL|Seed on which the random source for the time series is based||"Seed" : 3629|Yes|
+|Form|*string*|GLOBAL|Output type|*CSV* or *HTTP*|"Form" : "HTTP"|Yes|
+|SeedX|*int64*|GLOBAL|Seed on which the random source for the time series is based||"SeedX" : 3629|Yes|
 |Samples|*uint64*|GLOBAL|Number of absolute points in time created for time series||"Samples" : 100000|Yes|
 |Duration|*float64*|GLOBAL|Number of seconds over which the time series is spread, starting at **Start** point in time (take into account the **Now** flag)||"Duration" : 60|Yes|
 |Start|*time.Time*|GLOBAL|IANA time specifier.  Note the go specific format|Number of nano seconds from 1 Jan 1970|"Start" : "2016-02-01T14:00:00+02:00"|Yes|
@@ -89,6 +76,7 @@ The table lists the parameters pertaining to a **Format** of the *HTTP* type.  N
 |Distribute|*bool*|**Format** *HTTP*|Set if time series data points are to be distributed amongst sites ||"Distribute" : true|Optional|
 |Sites|*uint64*|**Format** *HTTP*|If **Distribute** is true, time series is distributed between indicated number of **Sites** ||"Sites" : 50000|Optional|
 |Spools|*int64*|**Format** *HTTP*|Number of 'concurrent' workers that accept and process jobs for the HTTP output||"Spools" : 8|Yes|
+|Post|*bool*|**Format** *HTTP*|Flag that enables/disables HTTP POSTs||"Post" : true|Yes|
 
 ###Transform **Type**
 ####SIN and COS
@@ -109,24 +97,11 @@ The table lists the parameters pertaining to a **Format** of the *HTTP* type.  N
 There are no specific configuration items surrounding a random value time series yet.
 TODO: Allow for a configurable seed value for the time series transform (currently fixed value)
 
+
 ####Compound
 The compound signal is not a specific transform **Type**.  It is an implied type. This is achieved when more than one entry in the **Type** slice is specified.  **Note** that the number of items in the **Bias**, **Freq** and **Amp** properties has to match the number of entries in the **Type** property slice.
 The resulting transform is a summation of each of the transforms defined by the aligned entries of the properties identified above.  
 It is thus possible to sum a variety of frequency signals on top of different biased offsets, each with a different amplitude and transform type to result in a compound signal.
-
-##Manual switch between target dbase
-TODO: Try and find an alternative to having ot manually recompile code to target different data base. 
-
-Currently, unfortunately, some manual intervention is required when targetting different data base from `tsgen` (this should obviously be eradicated ASAP).
-To change between target data base, do the following:
-
-1.  Edit the structure type in `out.go` that is associated with the REST membe of the `TSDestination` structure.
-  * There are currently three options
-    * `TSKairos` for KairosDB
-    * `TSOpen` for OpenTSDB
-    * `TSNewts`for NewTSDB
-  *  Change the following line of code in `out.go` to reflect the target database that is to be used
-    *  `REST []rest.TSOpen`
 
 ##Deployment
 This paragraph aims to describe the process involved in deploying the tsgen and using it to generate time series data that is available on whichever output (**Format**) was opted for.
