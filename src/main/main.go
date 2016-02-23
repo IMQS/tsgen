@@ -5,6 +5,8 @@ import (
 	"data"
 	"fmt"
 	"profile"
+	"report"
+	"strconv"
 	"time"
 )
 
@@ -49,6 +51,13 @@ func main() {
 		 * process(es)
 		 */
 		//go sets[idxProps].Create()
+		// Open Report with config settings
+		sets[idxProps].Report = new(report.Report)
+		sets[idxProps].Report.Name = "Report_" + strconv.Itoa(idxProps+1)
+		sets[idxProps].Report.AddString("Report_" + strconv.Itoa(idxProps+1) + " of " + strconv.Itoa(len(configs.Property)))
+		sets[idxProps].Report.AddString("***Config***")
+		sets[idxProps].Report.AddStruct(v)
+
 		go sets[idxProps].Create()
 
 	}

@@ -8,6 +8,8 @@ import (
 	"math/rand"
 	"out"
 	"profile"
+	"report"
+	"strconv"
 	"sync/atomic"
 )
 
@@ -36,6 +38,8 @@ type TSSet struct {
 	Stamp []int64       // Unix nanoseconds
 	Value []float64     // normalised before transform
 	State config.EState // Start up state for LOGIC signals
+
+	Report *report.Report // Report of test results
 
 	Done chan bool // Each set acknowledges when it has completed
 }
@@ -197,6 +201,9 @@ func (set *TSSet) Create() {
 	fmt.Println(set.Profile.Execute.Telapsed.Seconds(), "s")
 
 	fmt.Println("Jobs:", atomic.LoadUint64(&set.Output.Job))
+	set.Report.AddString("\n" + strconv.FormatFloat(set.Profile.Execute.Telapsed.Seconds(), 'f', 6, 64) + " s")
+	set.Report.AddString("Jobs:" + strconv.FormatUint(atomic.LoadUint64(&set.Output.Job), 16))
+	set.Report.Create()
 	set.Done <- true
 }
 
