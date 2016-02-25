@@ -1,3 +1,12 @@
+.67 Implement Connection and Channel as methods of TSQueue and not for the 
+	consumer and publisher individually
+.66 Simplify publisher
+.65 Update the initialisation of the RABBIT form in Output
+.64 Update Output to be more elegant in handling the RABBIT form and adapt
+	the assignment of Jobs (atomise)
+.63 Simplify consumer
+.62 Add properties Enable and Ack for RABBIT queue
+
 .61 Implement the Output publishing for queues
 .60 Implement the Output initialisation for the RABBIT form
 .59 Subscribe queues to either PUBLISH, CONSUME or BOTH

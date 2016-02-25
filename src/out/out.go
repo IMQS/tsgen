@@ -100,11 +100,30 @@ func (dst *TSOutput) Init() {
 		}
 	case config.RABBIT:
 		for id, name := range dst.Property.Queues {
-			dst.Rabbit = append(dst.Rabbit, rabbit.TSQueue{name, dst.Property.Subscribe[id], nil, nil})
+			dst.Rabbit = append(dst.Rabbit, rabbit.TSQueue{
+				name,
+				dst.Property.Subscribe[id],
+				dst.Property.Enable[id],
+				dst.Property.Ack[id],
+				dst.Property.Host,
+				dst.Property.Port,
+				dst.Property.User,
+				dst.Property.Pass,
+				nil,
+				nil,
+				nil,
+				nil})
 			dst.Rabbit[id].Init()
 		}
-		for _, queue := range dst.Rabbit {
-			queue.Build(dst.Property.User, dst.Property.Pass, dst.Property.Host, dst.Property.Port)
+
+		dst.Job = 0
+		// Initiate the pipes that will control the concurrent workforce
+		dst.Jobs = make(chan uint64)
+		dst.Done = make(chan int64, dst.Property.Spools)
+		// Create each Spool (worker) for concurrent processing of jobs
+		var id int64
+		for id = 0; id < dst.Property.Spools; id++ {
+			go dst.Spool(id)
 		}
 	default:
 	}
@@ -133,10 +152,16 @@ func (dst *TSOutput) Spool(id int64) {
 	for _ = range dst.Jobs {
 		// Prepare samples for output
 		dst.Format(id)
-		// Do HTTP request for adding data points to tsdb
-		dst.REST[id].Add(dst.Property.Host, dst.Property.Port)
-		// Atomically increase job counter for verification
-		atomic.AddUint64(&dst.Job, 1)
+
+		switch dst.Property.Form {
+		case config.HTTP:
+			// Do HTTP request for adding data points to tsdb
+			dst.REST[id].Add(dst.Property.Host, dst.Property.Port)
+			// Atomically increase job counter for verification
+		case config.RABBIT:
+			dst.Publish()
+		default:
+		}
 	}
 	fmt.Print("@", id)
 	dst.Done <- id
@@ -202,16 +227,47 @@ func (dst *TSOutput) Out() {
 	case config.CSV:
 		dst.CSV()
 	case config.HTTP:
-		// Add a job for the first available spool to process
-		dst.Jobs <- dst.Job
+		dst.HTTP()
 	case config.RABBIT:
-		dst.Publish()
+		//dst.Publish()
+		dst.AssignJob()
 	default:
-		dst.defaultCSV()
+		dst.Default()
 	}
 }
 
-func (dst *TSOutput) defaultCSV() {
+func (dst *TSOutput) CSV() {
+	disk := dst.Open()
+	defer dst.Close(disk)
+
+	// Data already formatted to content, write to disk
+	disk.Write(dst.Content)
+	dst.Flush()
+}
+
+func (dst *TSOutput) AssignJob() {
+	// Add a job for the first available spool to process
+	dst.Jobs <- atomic.LoadUint64(&dst.Job)
+	atomic.AddUint64(&dst.Job, 1)
+}
+
+func (dst *TSOutput) HTTP() {
+	dst.AssignJob()
+}
+
+func (dst *TSOutput) Publish() {
+	/*
+	 * Publish on all of the queues that are subscribed
+	 * on this time series
+	 */
+	for _, queue := range dst.Rabbit {
+		for _, pub := range queue.Publish {
+			pub.Do([]byte("HALO"), queue.Ack, queue.NAck)
+		}
+	}
+}
+
+func (dst *TSOutput) Default() {
 	disk := dst.Open()
 	defer dst.Close(disk)
 	/**
@@ -232,26 +288,6 @@ func (dst *TSOutput) defaultCSV() {
 		}
 	}
 	w.Flush()
-}
-
-func (dst *TSOutput) CSV() {
-	disk := dst.Open()
-	defer dst.Close(disk)
-
-	// Data already formatted to content, write to disk
-	disk.Write(dst.Content)
-	dst.Flush()
-}
-
-func (dst *TSOutput) Publish() {
-	for _, queue := range dst.Rabbit {
-		//for id, pub := range queue.Publish {
-		for _, pub := range queue.Publish {
-			fmt.Println("OnQueue")
-			pub.Do([]byte("HALO"))
-
-		}
-	}
 }
 
 func (dst *TSOutput) Open() *os.File {

@@ -82,6 +82,8 @@ type TSProperties struct {
 
 	Queues    []string            // Array of Queue names
 	Subscribe []rabbit.ESubscribe // Queue subscriptions
+	Enable    []bool
+	Ack       []bool
 
 	// Derived
 	Compound bool // Combine different signals to form one

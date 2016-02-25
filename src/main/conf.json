@@ -1,19 +1,19 @@
 {"Property" : 
 	[
 		{
-			"DBase" : "OPEN",
+			"DBase" : "RABBIT",
 			"Name": "phoenixdb_bench_site",
 			"Form" : "RABBIT",
 			"SeedX": 3369,
-			"Samples": 10000,
-			"Duration" : 60,
-			"Start" : "2016-02-22T00:00:00+02:00",
+			"Samples": 1000000,
+			"Duration" : 86400,
+			"Start" : "2016-02-25T00:00:00+02:00",
 			"Now" : true,
 			"Type" : ["LOGIC"],
 			"Bias" : [12],
 			"Batch" : 1,
 
-			"Host" : "localhost",
+			"Host" : "phoenixdb",
 			"Port" : 5672,
 			"User" : "guest",
 			"Pass" : "guest",
@@ -23,8 +23,10 @@
 			"Spools" : 8,
 			"Post" : false,
 
-			"Queues" : ["Q1"],
+			"Queues" : ["Qraw"],
 			"Subscribe" : ["PUBLISH"],
+			"Enable" : [true],
+			"Ack" : [true],
 
 			"Freq" : [1],
 			"Amp" : [2],

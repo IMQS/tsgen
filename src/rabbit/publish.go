@@ -3,81 +3,75 @@ package rabbit
 import (
 	"fmt"
 	"github.com/streadway/amqp"
-	"strconv"
+	"time"
 )
 
 type TSPublish struct {
-	Packet []byte
-	Name   string
-	Host   string
-	Port   int64
-	User   string
-	Pass   string
-	Conn   *amqp.Connection
-	Chan   *amqp.Channel
-	Que    amqp.Queue
+	Packet      []byte
+	Name        string
+	Enable      bool
+	Acknowledge bool
+
+	Conn *amqp.Connection
+	Chan *amqp.Channel
 }
 
-func (pub *TSPublish) Init() {
-	pub.Connection()
-	//defer pub.Conn.Close()
-	pub.Channel()
-	//defer pub.Chan.Close()
-	pub.Queue()
-}
+func (pub *TSPublish) Confirm(ack, nack chan uint64) {
+	select {
 
-func (pub *TSPublish) Connection() {
-	var err error
-	pub.Conn, err = amqp.Dial("amqp://" + pub.User + ":" + pub.Pass + "@" + pub.Host + ":" + strconv.FormatInt(pub.Port, 10) + "/")
-	Fail(err, "Failed to connect to RabbitMQ")
-}
+	case <-ack:
 
-func (pub *TSPublish) Channel() {
-	var err error
-	pub.Chan, err = pub.Conn.Channel()
-	Fail(err, "Failed to open a channel")
-}
-
-func (pub *TSPublish) Queue() {
-	var err error
-	fmt.Println(pub.Name)
-	pub.Que, err = pub.Chan.QueueDeclare(
-		pub.Name, // name
-		false,    // durable
-		false,    // delete when unused
-		false,    // exclusive
-		false,    // no-wait
-		nil,      // arguments
-	)
-	Fail(err, "Failed to open a channel")
-}
-
-func (pub *TSPublish) Do(packet []byte) {
-	var err error
-	if packet == nil {
-	} else {
-		pub.Packet = make([]byte, len(packet))
-		copy(pub.Packet, packet)
+	case tag := <-nack:
+		fmt.Println("Nack alert! %d", tag)
 	}
-	if pub.Packet == nil {
+}
 
-	} else {
+func (pub *TSPublish) Do(packet []byte, ack, nack chan uint64) {
+	//fmt.Printf("%#v\n", pub)
 
-		if pub.Chan == nil {
-			fmt.Println("Chan is nil")
+	var err error
+	/*
+		if packet == nil {
+			fmt.Print("0")
 		} else {
+			pub.Packet = make([]byte, len(packet))
+			copy(pub.Packet, packet)
+		}
+		if pub.Packet == nil {
+			fmt.Print("0")
+		} else {
+			if pub.Chan == nil {
+				fmt.Print("0")
+			} else {
+	*/
 
-			err = pub.Chan.Publish(
-				"",           // exchange
-				pub.Que.Name, // routing key
-				false,        // mandatory
-				false,        // immediate
-				amqp.Publishing{
-					ContentType: "text/plain",
-					Body:        pub.Packet,
-				})
-			Fail(err, "Publish error")
+	if pub.Enable {
+		err = pub.Chan.Publish(
+			"",       // exchange
+			pub.Name, // routing key
+			false,    // mandatory
+			false,    // immediate
+			amqp.Publishing{
+				Timestamp:    time.Now(),
+				ContentType:  "text/plain",
+				Body:         packet,
+				DeliveryMode: amqp.Transient,
+				Priority:     0,
+			})
+		Fail(err, "Publish error")
+
+		if pub.Acknowledge {
+			pub.Confirm(ack, nack)
 		}
 	}
+	/*
+			}
+		}
+	*/
 
+}
+
+func (pub *TSPublish) Close() {
+	pub.Conn.Close()
+	pub.Chan.Close()
 }
