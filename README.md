@@ -10,25 +10,32 @@ The configuration file is a JSON data structure that enables the definition of d
 {"Property" : 
 	[
 		{
-			"DBase" : "OPEN",
+			"DBase" : "RABBIT",
 			"Name": "phoenixdb_bench_site",
-			"Form" : "HTTP",
+			"Form" : "RABBIT",
 			"SeedX": 3369,
-			"Samples": 10000,
-			"Duration" : 60,
-			"Start" : "2016-02-22T00:00:00+02:00",
+			"Samples": 1000000,
+			"Duration" : 86400,
+			"Start" : "2016-02-25T00:00:00+02:00",
 			"Now" : true,
 			"Type" : ["LOGIC"],
 			"Bias" : [12],
 			"Batch" : 1,
 
 			"Host" : "phoenixdb",
-			"Port" : 4250,
+			"Port" : 5672,
+			"User" : "guest",
+			"Pass" : "guest",
 			"Mode" : "LOAD",
 			"Distribute" : true,
 			"Sites" : 50000,
 			"Spools" : 8,
 			"Post" : false,
+
+			"Queues" : ["Qraw"],
+			"Subscribe" : ["PUBLISH"],
+			"Enable" : [true],
+			"Ack" : [true],
 
 			"Freq" : [1],
 			"Amp" : [2],
@@ -37,7 +44,6 @@ The configuration file is a JSON data structure that enables the definition of d
 			"State"	: "LOW",
 			"Low" : 0,
 			"High" : 3.3
-			
 		}
 	]
 }
@@ -51,7 +57,7 @@ The table lists the basic parameters of the configuration file.  Note that their
 |:---|:---|:---|:---|:---|:---|:---|
 |DBase|EDBaseType|GLOBAL|Determines the predefined time series or other database|*CITUS*, *KAIROS*, *OPEN* and *NEW* supported|"DBase" : "KAIROS"|Optional|
 |Name|*string*|GLOBAL|Identifier for time series data set||"Name" : "voltage"|Yes|
-|Form|*string*|GLOBAL|Output type|*CSV* or *HTTP*|"Form" : "HTTP"|Yes|
+|Form|*string*|GLOBAL|Output type|*CSV*, *HTTP* or *RABBIT*|"Form" : "HTTP"|Yes|
 |SeedX|*int64*|GLOBAL|Seed on which the random source for the time series is based||"SeedX" : 3629|Yes|
 |Samples|*uint64*|GLOBAL|Number of absolute points in time created for time series||"Samples" : 100000|Yes|
 |Duration|*float64*|GLOBAL|Number of seconds over which the time series is spread, starting at **Start** point in time (take into account the **Now** flag)||"Duration" : 60|Yes|
@@ -62,11 +68,11 @@ The table lists the basic parameters of the configuration file.  Note that their
 |Batch|*uint64*|GLOBAL|Number of data points to collect before processing||"Batch" : 50|Optional, default values provided|
 
 ###Output **Format**
-##CSV
+####CSV
 There are no specific configuration items surrounding the *CSV* output format yet.
 
-##HTTP
-The table lists the parameters pertaining to a **Format** of the *HTTP* type.  Note that their required status is referenced within the *HTTP* scope, this if *HTTP* scope not defined they may be ommitted completely.
+####HTTP
+The table lists the parameters pertaining to a **Form** of the *HTTP* type.  Note that their required status is referenced within the *HTTP* scope, thus if *HTTP* scope not defined they may be ommitted completely.
 
 |Parameter|Type|Relevance|Description|Detail|Example|Required|
 |:---|:---|:---|:---|:---|:---|:---|
@@ -77,6 +83,16 @@ The table lists the parameters pertaining to a **Format** of the *HTTP* type.  N
 |Sites|*uint64*|**Format** *HTTP*|If **Distribute** is true, time series is distributed between indicated number of **Sites** ||"Sites" : 50000|Optional|
 |Spools|*int64*|**Format** *HTTP*|Number of 'concurrent' workers that accept and process jobs for the HTTP output||"Spools" : 8|Yes|
 |Post|*bool*|**Format** *HTTP*|Flag that enables/disables HTTP POSTs||"Post" : true|Yes|
+
+####RABBIT
+The table lists the parameters pertaining to a **Form** of the *RABBIT* type.  Note that their required status is referenced within the *RABBIT* scope, thus if *RABBIT* scope not defined they may be ommitted completely.
+
+|Parameter|Type|Relevance|Description|Detail|Example|Required|
+|:---|:---|:---|:---|:---|:---|:---|
+|Queues|*[]string*|**Form** *RABBIT*|Slice of queue names used in the config||"Queues" : ["Qraw"]|Yes|
+|Subscribe|*[]string*|**Form** *RABBIT*|Determines whether the instance is publishing or consuming|*PUBLISH* or *CONSUME*|"Subscribe" : ["PUBLISH"]|Yes|
+|Enable|*[]bool*|**Form** *RABBIT*|Enables (when true) publishing or consuming to and from queue||"Enable" : [true]|Yes|
+|Ack|*[]bool*|**Form** *RABBIT*|Enables (when true) confirmation or acknowledgement of a message onto and from queue||"Ack" : [true]|Yes|
 
 ###Transform **Type**
 ####SIN and COS
