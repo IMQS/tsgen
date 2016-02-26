@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"net/http"
 	//"os"
+	"profile"
 	"strconv"
 	"time"
 )
@@ -42,6 +43,10 @@ type TSDBase struct {
 	IdxSeries int
 	Tags      map[string]string
 	Val       int64
+	Retry     int64
+	CntRetry  int64
+
+	Gap profile.TSProfile
 
 	Seed    int64
 	SrcSite rand.Source
@@ -130,27 +135,37 @@ func (db *TSDBase) Create(metric string, site string, stamp int64, value float64
 	db.batch = append(db.batch, TSDataPoint{db.DBase, metric, site, 0, stamp, value, tags})
 }
 
-func (db *TSDBase) Response(resp *http.Response, code int) {
-	if resp == nil {
-		fmt.Print("No response")
-		//os.Exit(1)
-	} else {
-		contents, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			fmt.Printf("%s", err)
-			fmt.Printf("%s\n", string(contents))
-			//os.Exit(1)
-		}
+func (db *TSDBase) OpenTSDBSingle() []byte {
 
-		if resp.StatusCode != code {
-			fmt.Println()
-			fmt.Println("Response code: ", resp.StatusCode) //Uh-oh this means our test failed
-			fmt.Println()
-			//os.Exit(1)
-		}
+	mJson := bytes.NewBuffer(make([]byte, 0))
+	mJson.Write([]byte(`{`))
+	mJson.Write([]byte(`"metric" : `))
+	mJson.Write([]byte(strconv.Quote(db.single.metric)))
+	mJson.Write([]byte(`,`))
+	mJson.Write([]byte(`"timestamp" : `))
+	mJson.Write([]byte(strconv.FormatInt(db.single.stamp/int64(time.Millisecond), 10)))
+	mJson.Write([]byte(`,`))
+	mJson.Write([]byte(`"value" : `))
+	mJson.Write([]byte(strconv.FormatFloat(db.single.value, 'f', -1, 64)))
+	mJson.Write([]byte(`, `))
+	mJson.Write([]byte(`"tags" : `))
+	mJson.Write([]byte(`{`))
 
-		defer resp.Body.Close()
+	var cnt int = 0
+	for idx, value := range db.single.tags {
+		mJson.Write([]byte(strconv.Quote(idx) + " : "))
+		mJson.Write([]byte(strconv.Quote(value)))
+		if cnt < (len(db.single.tags) - 1) {
+			mJson.Write([]byte(`,`))
+		}
+		cnt++
 	}
+
+	mJson.Write([]byte(`}`))
+	mJson.Write([]byte(`}`))
+
+	return mJson.Bytes()
+
 }
 
 func (db *TSDBase) Add(host string, port int64) {
@@ -183,47 +198,71 @@ func (db *TSDBase) Add(host string, port int64) {
 	url += cmd
 
 	var mJson = make([]byte, 0)
-	var jerr error
 	switch db.DBase {
 	case OPEN:
-		fmt.Println(fSingle)
 		if fSingle {
-			mJson, jerr = json.Marshal(db.single)
-			if jerr != nil {
-				fmt.Println(jerr)
-			}
+			mJson = db.OpenTSDBSingle()
 		} else {
 			mJson, _ = json.Marshal(db.batch)
 		}
 	default:
 		mJson, _ = json.Marshal(db.batch)
 	}
-	fmt.Println(string(mJson))
-
-	if mJson != nil {
-
-	}
+	//fmt.Println(string(mJson))
 
 	if db.Post {
-		resp, err := http.Post(url, "application/json", bytes.NewReader(mJson))
+		db.CntRetry = 0
+		for {
+			resp, err := http.Post(url, "application/json", bytes.NewReader(mJson))
+			if err != nil {
+			}
+			if db.Response(resp, db.Code()) {
+				break
+			} else {
+				//db.Gap.Execute.TimeOut(1e9)
 
-		if err != nil {
-			fmt.Printf("%s", err)
-			//os.Exit(1)
-		}
-
-		switch db.DBase {
-		case KAIROS:
-			db.Response(resp, 204)
-		case NEW:
-			db.Response(resp, 201)
-		case OPEN:
-			db.Response(resp, 200)
-		default:
+				if db.CntRetry == db.Retry {
+					fmt.Println("Retry failure")
+					break
+				}
+				db.CntRetry++
+			}
+			time.Sleep(100)
 		}
 	}
 	db.Reset()
 
+}
+
+func (db *TSDBase) Code() int {
+	switch db.DBase {
+	case KAIROS:
+		return 204
+	case NEW:
+		return 201
+	case OPEN:
+		return 200
+	default:
+		return 0
+	}
+}
+
+func (db *TSDBase) Response(resp *http.Response, code int) bool {
+	var pass bool = true
+	if resp == nil {
+		pass = false
+	} else {
+		_, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			pass = false
+		}
+		if resp.StatusCode != code {
+			pass = false
+		}
+
+		defer resp.Body.Close()
+	}
+	return pass
 }
 
 func (db *TSDBase) Reset() {

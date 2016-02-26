@@ -1,3 +1,8 @@
+.69 Implement the single form of the OpenTSDB JSON marshalling with static 
+	text and conversions to benchmark the single batch, single process
+	write speeds of the data base.
+.68 Implement retry on HTTP request.  Not thoroughly tested yet.
+
 .67 Implement Connection and Channel as methods of TSQueue and not for the 
 	consumer and publisher individually
 .66 Simplify publisher

@@ -1,11 +1,11 @@
 {"Property" : 
 	[
 		{
-			"DBase" : "RABBIT",
+			"DBase" : "KAIROS",
 			"Name": "phoenixdb_bench_site",
-			"Form" : "RABBIT",
+			"Form" : "HTTP",
 			"SeedX": 3369,
-			"Samples": 1000000,
+			"Samples": 100000,
 			"Duration" : 86400,
 			"Start" : "2016-02-25T00:00:00+02:00",
 			"Now" : true,
@@ -14,19 +14,20 @@
 			"Batch" : 1,
 
 			"Host" : "phoenixdb",
-			"Port" : 5672,
+			"Port" : 8081,
 			"User" : "guest",
 			"Pass" : "guest",
 			"Mode" : "LOAD",
 			"Distribute" : true,
 			"Sites" : 50000,
-			"Spools" : 8,
-			"Post" : false,
+			"Spools" : 1,
+			"Post" : true,
+			"Retry" : 5,
 
-			"Queues" : ["Qraw"],
-			"Subscribe" : ["PUBLISH"],
-			"Enable" : [true],
-			"Ack" : [true],
+			"Queues" : ["Qraw","Qbin"],
+			"Subscribe" : ["PUBLISH", "PUBLISH"],
+			"Enable" : [true, true],
+			"Ack" : [true, true],
 
 			"Freq" : [1],
 			"Amp" : [2],

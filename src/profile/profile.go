@@ -41,6 +41,17 @@ func (m *TSMoment) Elapsed() int64 {
 	return m.Telapsed.Nanoseconds()
 }
 
+func (m *TSMoment) TimeOut(d time.Duration) {
+	m.Start(d)
+	for {
+		if m.IsTimeOut() {
+			break
+		} else {
+		}
+	}
+	m.Stop()
+}
+
 func (m *TSMoment) IsTimeOut() bool {
 	return time.Now().After(m.Tout)
 }

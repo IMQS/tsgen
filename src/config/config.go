@@ -79,6 +79,7 @@ type TSProperties struct {
 	Sites      uint64 // Number of sites to simulate data for
 	Spools     int64  // Number of pools to sping up
 	Post       bool   // Flag that enables/diable HTTP posts
+	Retry      int64  // Retries HTTP request until it passes
 
 	Queues    []string            // Array of Queue names
 	Subscribe []rabbit.ESubscribe // Queue subscriptions

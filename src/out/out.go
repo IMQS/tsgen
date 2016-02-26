@@ -95,6 +95,7 @@ func (dst *TSOutput) Init() {
 		var id int64
 		for id = 0; id < dst.Property.Spools; id++ {
 			dst.REST[id].DBase = dst.Property.DBase
+			dst.REST[id].Retry = dst.Property.Retry
 			dst.SrcSite[id] = rand.NewSource(12359 % (id + 1))
 			go dst.Spool(id)
 		}

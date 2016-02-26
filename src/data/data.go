@@ -171,7 +171,9 @@ func (set *TSSet) Create() {
 	 * that was not handled on a modulus event on page* size
 	 * that may still reside within the buffer to disk
 	 */
-	set.Process()
+	if set.idxSample%int64(set.Property.Batch) != 0 {
+		set.Process()
+	}
 
 	switch set.Output.Property.Form {
 	case config.CSV:
