@@ -220,7 +220,6 @@ func (db *TSDBase) Add(host string, port int64) {
 				break
 			} else {
 				//db.Gap.Execute.TimeOut(1e9)
-
 				if db.CntRetry == db.Retry {
 					fmt.Println("Retry failure")
 					break

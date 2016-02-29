@@ -3,9 +3,9 @@
 		{
 			"DBase" : "KAIROS",
 			"Name": "phoenixdb_bench_site",
-			"Form" : "HTTP",
+			"Form" : "RABBIT",
 			"SeedX": 3369,
-			"Samples": 100000,
+			"Samples": 10000,
 			"Duration" : 86400,
 			"Start" : "2016-02-25T00:00:00+02:00",
 			"Now" : true,
@@ -14,7 +14,7 @@
 			"Batch" : 1,
 
 			"Host" : "phoenixdb",
-			"Port" : 8081,
+			"Port" : 5672,
 			"User" : "guest",
 			"Pass" : "guest",
 			"Mode" : "LOAD",
@@ -22,7 +22,7 @@
 			"Sites" : 50000,
 			"Spools" : 1,
 			"Post" : true,
-			"Retry" : 5,
+			"Retry" : 0,
 
 			"Queues" : ["Qraw","Qbin"],
 			"Subscribe" : ["PUBLISH", "PUBLISH"],
