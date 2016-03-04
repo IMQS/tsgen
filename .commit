@@ -1,4 +1,18 @@
-
+.77 Use the stored Data slice to calculate aggregations on the data like sum, avg, 
+max and min.  In this way we calculate an average latency
+.76 Implement a Data slice to store a sequence of values while benchmarking through
+thousands of samples.  
+.75 Implement a Latency performance profile for both the TSWrite and TSRead 
+structures of the REST interface
+.74 Implement the different DataPoint and Query (TSWrite and TSRead) slices in the
+TSOutput structure to manage both writing data points and querying data bases
+.73 Implement the functions that will enable the queries to time series database
+.72 Implement the TSRead and accoompanying structures to create an interface over
+which queries may be sent to the respective database.
+.71 Differentiate between 'LOAD' and 'QUERY' on the HTTP form of Output to enable 
+running queries on time series data base
+.70 Add the waiting stages for config.RABBIT at the end of the Create function
+in data.go
 
 .69 Implement the single form of the OpenTSDB JSON marshalling with static 
 	text and conversions to benchmark the single batch, single process

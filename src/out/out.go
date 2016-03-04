@@ -21,10 +21,11 @@ const (
 
 // Structure completely defines data destination
 type TSOutput struct {
-	Path     string               // Usually a file path when writing to disk
-	Property *config.TSProperties // Set of properties that fully describe set
-	REST     []rest.TSDBase       // Structure that describes the REST output in full
-	Rabbit   []rabbit.TSQueue
+	Path      string               // Usually a file path when writing to disk
+	Property  *config.TSProperties // Set of properties that fully describe set
+	DataPoint []rest.TSWrite       // Structure that describes the DataPoint output in full
+	Query     []rest.TSRead        // Structure that describes the Query output in full
+	Rabbit    []rabbit.TSQueue
 
 	Job  uint64
 	Jobs chan uint64 // Manages jobs for spooling
@@ -73,32 +74,62 @@ func (dst *TSOutput) Init() {
 	case config.HTTP:
 
 		// Initialise REST request/query
-		dst.REST = make([]rest.TSDBase, dst.Property.Spools)
+		switch dst.Property.Mode {
+		case config.LOAD:
+			dst.DataPoint = make([]rest.TSWrite, dst.Property.Spools)
 
-		/**
-		 * Create random source for each spool from different seed
-		 * Initially made the mistake to regenerate the source for eacg
-		 * batch process, thus there were never more than batch number of
-		 * different sites
-		 */
-		dst.SrcSite = make([]rand.Source, dst.Property.Spools)
+			/**
+			 * Create random source for each spool from different seed
+			 * Initially made the mistake to regenerate the source for eacg
+			 * batch process, thus there were never more than batch number of
+			 * different sites
+			 */
+			dst.SrcSite = make([]rand.Source, dst.Property.Spools)
 
-		// Create buffers that recevie data from signal transform pipe
-		dst.SpoolStamp = make([][]int64, dst.Property.Spools)
-		dst.SpoolValue = make([][]float64, dst.Property.Spools)
-		// Initiate the job counter as one of the verification metrics
-		dst.Job = 0
-		// Initiate the pipes that will control the concurrent workforce
-		dst.Jobs = make(chan uint64)
-		dst.Done = make(chan int64, dst.Property.Spools)
-		// Create each Spool (worker) for concurrent processing of jobs
-		var id int64
-		for id = 0; id < dst.Property.Spools; id++ {
-			dst.REST[id].DBase = dst.Property.DBase
-			dst.REST[id].Retry = dst.Property.Retry
-			dst.SrcSite[id] = rand.NewSource(12359 % (id + 1))
-			go dst.Spool(id)
+			// Create buffers that recevie data from signal transform pipe
+			dst.SpoolStamp = make([][]int64, dst.Property.Spools)
+			dst.SpoolValue = make([][]float64, dst.Property.Spools)
+
+			// Initiate the job counter as one of the verification metrics
+			dst.Job = 0
+			// Initiate the pipes that will control the concurrent workforce
+			dst.Jobs = make(chan uint64)
+			dst.Done = make(chan int64, dst.Property.Spools)
+			// Create each Spool (worker) for concurrent processing of jobs
+			var id int64
+			for id = 0; id < dst.Property.Spools; id++ {
+				dst.DataPoint[id].DBase = dst.Property.DBase
+				dst.DataPoint[id].Retry = dst.Property.Retry
+				//Enable and initilaise REST latency calculations
+				dst.DataPoint[id].Latency.Aggregates.Enable = true
+				dst.DataPoint[id].Latency.Aggregates.Ignore = true
+				dst.DataPoint[id].Latency.Aggregates.Reset()
+				dst.SrcSite[id] = rand.NewSource(12359 % (id + 1))
+				go dst.Spool(id)
+			}
+		case config.QUERY:
+			dst.Query = make([]rest.TSRead, dst.Property.Spools)
+			dst.SrcSite = make([]rand.Source, dst.Property.Spools)
+
+			dst.Job = 0
+			// Initiate the pipes that will control the concurrent workforce
+			dst.Jobs = make(chan uint64)
+			dst.Done = make(chan int64, dst.Property.Spools)
+			// Create each Spool (worker) for concurrent processing of jobs
+			var id int64
+			for id = 0; id < dst.Property.Spools; id++ {
+				dst.Query[id].DBase = dst.Property.DBase
+				dst.Query[id].Retry = dst.Property.Retry
+				//Enable and initilaise REST latency calculations
+				dst.Query[id].Latency.Aggregates.Enable = true
+				dst.Query[id].Latency.Aggregates.Ignore = true
+				dst.Query[id].Latency.Aggregates.Reset()
+				dst.SrcSite[id] = rand.NewSource(18457 % (id + 1))
+				go dst.Spool(id)
+			}
+		default:
 		}
+
 	case config.RABBIT:
 		for id, name := range dst.Property.Queues {
 			dst.Rabbit = append(dst.Rabbit, rabbit.TSQueue{
@@ -133,6 +164,52 @@ func (dst *TSOutput) Init() {
 
 }
 
+func (dst *TSOutput) Finally() {
+	switch dst.Property.Form {
+	case config.CSV:
+	case config.HTTP:
+		switch dst.Property.Mode {
+		case config.LOAD:
+			for idx, value := range dst.DataPoint {
+				fmt.Println("Data point aggregates")
+				fmt.Print("Latency: ")
+				fmt.Printf(
+					"%v samples:%v sum:%v avg:%v minidx: %v min:%v maxidx:%v max:%v ms\r\n",
+					idx,
+					value.Latency.Aggregates.Samples,
+					value.Latency.Aggregates.Sum/1e6,
+					value.Latency.Aggregates.Avg/1e6,
+					value.Latency.Aggregates.SampleMin,
+					value.Latency.Aggregates.Min/1e6,
+					value.Latency.Aggregates.SampleMax,
+					value.Latency.Aggregates.Max/1e6)
+				//fmt.Println(value.Latency.Data)
+
+			}
+		case config.QUERY:
+			for idx, value := range dst.Query {
+				fmt.Println("Query aggregates")
+				fmt.Print("Latency: ")
+				fmt.Printf(
+					"%v samples:%v sum:%v avg:%v minidx: %v min:%v maxidx:%v max:%v ms\r\n",
+					idx,
+					value.Latency.Aggregates.Samples,
+					value.Latency.Aggregates.Sum/1e6,
+					value.Latency.Aggregates.Avg/1e6,
+					value.Latency.Aggregates.SampleMin,
+					value.Latency.Aggregates.Min/1e6,
+					value.Latency.Aggregates.SampleMax,
+					value.Latency.Aggregates.Max/1e6)
+				//fmt.Println(value.Latency.Data)
+			}
+		default:
+		}
+
+	case config.RABBIT:
+	default:
+	}
+}
+
 func (dst *TSOutput) Dump() {
 	switch dst.Property.Form {
 	case config.CSV:
@@ -156,9 +233,15 @@ func (dst *TSOutput) Spool(id int64) {
 
 		switch dst.Property.Form {
 		case config.HTTP:
-			// Do HTTP request for adding data points to tsdb
-			dst.REST[id].Add(dst.Property.Host, dst.Property.Port)
-			// Atomically increase job counter for verification
+			switch dst.Property.Mode {
+			case config.LOAD:
+				// Do HTTP post for adding data points to tsdb
+				dst.DataPoint[id].Add(dst.Property.Host, dst.Property.Port)
+			case config.QUERY:
+				// Do HTTP post for querying data points from tsdb
+				dst.Query[id].Query(dst.Property.Host, dst.Property.Port)
+			default:
+			}
 		case config.RABBIT:
 			dst.Publish()
 		default:
@@ -192,30 +275,41 @@ func (dst *TSOutput) Format(id int64) {
 			}
 		case config.HTTP:
 			/**
-			 * REST does not utilise the Content array, it stores its
+			 * DataPoint does not utilise the Content array, it stores its
 			 * commands internally
 			 * Structured to POST for each value pair produced by the value
 			 * pump
 			 */
-			dst.SpoolStamp[id] = make([]int64, 0)
-			dst.SpoolValue[id] = make([]float64, 0)
-			dst.SpoolStamp[id] = make([]int64, len(dst.Stamp))
-			dst.SpoolValue[id] = make([]float64, len(dst.Value))
-			copy(dst.SpoolStamp[id], dst.Stamp)
-			copy(dst.SpoolValue[id], dst.Value)
-			//dst.Flush()
-			dst.REST[id].Init(id, dst.Property.Post)
+			switch dst.Property.Mode {
+			case config.LOAD:
+				dst.SpoolStamp[id] = make([]int64, 0)
+				dst.SpoolValue[id] = make([]float64, 0)
+				dst.SpoolStamp[id] = make([]int64, len(dst.Stamp))
+				dst.SpoolValue[id] = make([]float64, len(dst.Value))
+				copy(dst.SpoolStamp[id], dst.Stamp)
+				copy(dst.SpoolValue[id], dst.Value)
 
-			for dst.REST[id].IdxSeries = 0; dst.REST[id].IdxSeries < len(dst.SpoolStamp[id]); dst.REST[id].IdxSeries++ {
-				if dst.Property.Distribute {
-					dst.REST[id].Val = int64((float64(dst.SrcSite[id].Int63()) / float64(math.MaxInt64)) * float64(dst.Property.Sites))
-					dst.REST[id].Site = strconv.FormatInt(dst.REST[id].Val, 10)
+				dst.DataPoint[id].Init(id, dst.Property.Post)
+
+				for dst.DataPoint[id].IdxSeries = 0; dst.DataPoint[id].IdxSeries < len(dst.SpoolStamp[id]); dst.DataPoint[id].IdxSeries++ {
+					if dst.Property.Distribute {
+						dst.DataPoint[id].Val = int64((float64(dst.SrcSite[id].Int63()) / float64(math.MaxInt64)) * float64(dst.Property.Sites))
+						dst.DataPoint[id].Site = strconv.FormatInt(dst.DataPoint[id].Val, 10)
+					}
+					dst.DataPoint[id].Tags = map[string]string{"site": "north", "alarm": "none"}
+					dst.DataPoint[id].Create(dst.Property.Name, dst.DataPoint[id].Site, dst.SpoolStamp[id][dst.DataPoint[id].IdxSeries], dst.SpoolValue[id][dst.DataPoint[id].IdxSeries], dst.DataPoint[id].Tags)
 				}
-				dst.REST[id].Tags = map[string]string{"site": "north", "alarm": "none"}
-				// Kairos DB & OpenTS DB
-				dst.REST[id].Create(dst.Property.Name, dst.REST[id].Site, dst.SpoolStamp[id][dst.REST[id].IdxSeries], dst.SpoolValue[id][dst.REST[id].IdxSeries], dst.REST[id].Tags)
+			case config.QUERY:
+				dst.Query[id].Init(id, dst.Property.Post)
+				if dst.Property.Distribute {
+					dst.Query[id].Val = int64((float64(dst.SrcSite[id].Int63()) / float64(math.MaxInt64)) * float64(dst.Property.Sites))
+					dst.Query[id].Site = strconv.FormatInt(dst.Query[id].Val, 10)
+				}
+				dst.Query[id].Tags = map[string]string{"site": "north", "alarm": "none"}
+				dst.Query[id].Create(dst.Property.Name, dst.Query[id].Site, dst.Property.Start, dst.Property.End, dst.Query[id].Tags)
+			default:
 			}
-			//fmt.Println(string(dst.REST[id].Json.Bytes()))
+
 		case config.RABBIT:
 
 		default:
@@ -230,8 +324,7 @@ func (dst *TSOutput) Out() {
 	case config.HTTP:
 		dst.HTTP()
 	case config.RABBIT:
-		//dst.Publish()
-		dst.AssignJob()
+		dst.RabbitMQ()
 	default:
 		dst.Default()
 	}
@@ -253,6 +346,10 @@ func (dst *TSOutput) AssignJob() {
 }
 
 func (dst *TSOutput) HTTP() {
+	dst.AssignJob()
+}
+
+func (dst *TSOutput) RabbitMQ() {
 	dst.AssignJob()
 }
 

@@ -1,11 +1,26 @@
 package profile
 
 import (
+	"math"
 	"time"
 )
 
+type TSAggregate struct {
+	Enable    bool
+	Ignore    bool
+	Samples   int64
+	Sum       float64
+	Avg       float64
+	Max       float64
+	SampleMax int64
+	Min       float64
+	SampleMin int64
+}
+
 type TSProfile struct {
-	Execute TSMoment
+	Execute    TSMoment
+	Data       []int64
+	Aggregates TSAggregate
 }
 
 type TSMoment struct {
@@ -15,6 +30,63 @@ type TSMoment struct {
 	Tlap     time.Time       // Stores the elapsed time on call to calculate lap time
 	Tout     time.Time       // Timeout trigger value
 	Laps     []time.Duration // Stores an array of lap times
+}
+
+func (agg *TSAggregate) Reset() {
+	agg.Sum = 0
+	agg.Avg = 0
+	agg.Max = 0
+	agg.Min = math.MaxFloat64
+}
+
+func (agg *TSAggregate) Calculate(idx int, value float64) {
+	agg.Samples += 1
+	agg.Sum += value
+	agg.Avg = agg.Sum / float64(agg.Samples)
+	if value > agg.Max {
+		agg.Max = value
+		agg.SampleMax = int64(idx)
+	}
+	if value < agg.Min {
+		agg.Min = value
+		agg.SampleMin = int64(idx)
+	}
+}
+
+func (pro *TSProfile) Reset() {
+	pro.Aggregates.Reset()
+}
+
+func (pro *TSProfile) Start(value int64) {
+
+}
+
+func (pro *TSProfile) Append(value int64) {
+	pro.Data = append(pro.Data, value)
+	if pro.Aggregates.Enable {
+		pro.Aggregate()
+	}
+}
+
+func (pro *TSProfile) Aggregate() {
+	var idx int = len(pro.Data) - 1
+	if pro.Aggregates.Ignore {
+		if idx == 0 {
+
+		} else {
+			pro.Aggregates.Calculate(idx, float64(pro.Data[idx]))
+		}
+	} else {
+		pro.Aggregates.Calculate(idx, float64(pro.Data[idx]))
+	}
+}
+
+func (pro *TSProfile) Sum() int64 {
+	var sum int64
+	for _, value := range pro.Data {
+		sum += value
+	}
+	return sum
 }
 
 func (m *TSMoment) Start(d time.Duration) {

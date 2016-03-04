@@ -27,6 +27,7 @@ type EMode string
 const (
 	REAL  EMode = "REAL"
 	LOAD  EMode = "LOAD"
+	QUERY EMode = "QUERY"
 	STORE EMode = "STORE"
 )
 
@@ -62,6 +63,7 @@ type TSProperties struct {
 	Samples  uint64      // unitless
 	Duration float64     // seconds
 	Start    time.Time   // specified in year, month etc
+	End      time.Time   // specified in year, month etc
 	Now      bool        // When true overrides the Start time with Now()
 	Type     []ESignal   // data type
 	Bias     []float64

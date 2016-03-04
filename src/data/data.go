@@ -195,8 +195,27 @@ func (set *TSSet) Create() {
 		for j = 0; j < jobs; j++ {
 			<-set.Output.Jobs
 		}
-	case config.RABBIT:
 
+		set.Output.Finally()
+
+	case config.RABBIT:
+		// No more jobs, all samples have been processed
+		close(set.Output.Jobs)
+
+		var s int64
+		// Wait on all Spools to spin down
+		for s = 0; s < set.Property.Spools; s++ {
+			<-set.Output.Done
+		}
+		fmt.Println("Spools")
+
+		var j uint64
+		var jobs uint64
+		jobs = (set.Property.Samples / set.Property.Batch) + 1
+		// Wait on all Jobs to complete
+		for j = 0; j < jobs; j++ {
+			<-set.Output.Jobs
+		}
 	default:
 	}
 
